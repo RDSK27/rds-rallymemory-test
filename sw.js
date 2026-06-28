@@ -1,17 +1,16 @@
 /* RDS Rally Memory Test - Service Worker
-   Prefijo de cache: rallymemory (coincide con localStorage rds_rallymemory_).
-   Sube SOLO el numero de version (rallymemory-vN) en cada despliegue.
+   Estrategia: NETWORK-FIRST para TODO lo del mismo origen (HTML, CSS, JS e imagenes).
+   - Con internet: siempre se descarga la version mas reciente y se refresca la copia
+     en cache. Cualquier cambio que subas (index.html, logo.webp, banner.webp, iconos...)
+     se ve la proxima vez que abras la app, SIN borrar nada ni subir el numero de version.
+   - Sin internet: se sirve la ultima copia cacheada (la app sigue funcionando offline).
+   - Firebase / gstatic / dominios externos: NO se interceptan (los gestiona el index.html
+     con Firestore + localStorage).
 
-   Estrategia:
-   - NAVEGACIONES / HTML  -> network-first: con red, la app instalada
-     coge SIEMPRE el index.html mas reciente (y lo guarda en cache);
-     sin red, usa la copia cacheada. Esto evita tener que borrar la
-     cache de Safari para ver una version nueva.
-   - Resto de assets del mismo origen -> cache-first.
-   - Firebase/gstatic/externos -> NO se interceptan (los gestiona el
-     index.html con la persistencia de Firestore + localStorage). */
+   Nota: la limpieza de cache solo borra las cache con prefijo 'rallymemory-' para no
+   afectar a otras apps RDS publicadas en el mismo dominio (rdsk27.github.io). */
 
-var CACHE = 'rallymemory-v1';
+var CACHE = 'rallymemory-v2';
 
 var SHELL = [
   './',
@@ -27,11 +26,11 @@ var SHELL = [
 ];
 
 self.addEventListener('install', function(event){
-  self.skipWaiting();                         /* activa la version nueva sin esperar */
+  self.skipWaiting();                          /* activa la version nueva sin esperar */
   event.waitUntil(
     caches.open(CACHE).then(function(c){
       return Promise.all(SHELL.map(function(u){
-        return c.add(u).catch(function(){});  /* precache tolerante */
+        return c.add(u).catch(function(){});   /* precache tolerante (offline base) */
       }));
     })
   );
@@ -41,6 +40,7 @@ self.addEventListener('activate', function(event){
   event.waitUntil(
     caches.keys().then(function(keys){
       return Promise.all(keys.map(function(k){
+        /* borra cache vieja de ESTA app (deja intactas las de otras apps RDS) */
         if(k.indexOf('rallymemory-') === 0 && k !== CACHE){ return caches.delete(k); }
         return null;
       }));
@@ -54,38 +54,20 @@ self.addEventListener('fetch', function(event){
   var url = new URL(req.url);
   if(url.origin !== self.location.origin) return;   /* no tocar Firebase/gstatic/externos */
 
-  var accept = req.headers.get('accept') || '';
-  var isHTML = req.mode === 'navigate' || accept.indexOf('text/html') !== -1;
-
-  if(isHTML){
-    /* network-first: lo ultimo cuando hay red; cache si no hay */
-    event.respondWith(
-      fetch(req).then(function(res){
-        if(res && res.status === 200){
-          var copy = res.clone();
-          caches.open(CACHE).then(function(c){ c.put(req, copy); });
-        }
-        return res;
-      }).catch(function(){
-        return caches.match(req).then(function(m){
-          return m || caches.match('index.html') || caches.match('./');
-        });
-      })
-    );
-    return;
-  }
-
-  /* resto: cache-first */
+  /* NETWORK-FIRST para todo el mismo origen: lo ultimo cuando hay red, cache si no hay */
   event.respondWith(
-    caches.match(req).then(function(cached){
-      if(cached) return cached;
-      return fetch(req).then(function(res){
-        if(res && res.status === 200 && res.type === 'basic'){
-          var copy = res.clone();
-          caches.open(CACHE).then(function(c){ c.put(req, copy); });
-        }
-        return res;
-      }).catch(function(){ return Response.error(); });
+    fetch(req).then(function(res){
+      if(res && res.status === 200 && (res.type === 'basic' || res.type === 'default')){
+        var copy = res.clone();
+        caches.open(CACHE).then(function(c){ c.put(req, copy).catch(function(){}); });
+      }
+      return res;
+    }).catch(function(){
+      return caches.match(req).then(function(m){
+        if(m) return m;
+        if(req.mode === 'navigate'){ return caches.match('index.html').then(function(x){ return x || caches.match('./'); }); }
+        return Response.error();
+      });
     })
   );
 });
