@@ -12,19 +12,22 @@
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
 <script>
 if('serviceWorker' in navigator){
-  var swReg=null, swUpdating=false, swReloaded=false;
+  var swReg=null, swReloaded=false;
+  var swHadController=!!navigator.serviceWorker.controller;
   navigator.serviceWorker.addEventListener('controllerchange', function(){
-    if(swUpdating && !swReloaded){ swReloaded=true; window.location.reload(); }
+    if(!swHadController || swReloaded) return;
+    swReloaded=true; window.location.reload();
   });
   window.addEventListener('load', function(){
     navigator.serviceWorker.register('sw.js', {updateViaCache:'none'}).then(function(reg){
       swReg=reg;
+      reg.update();
+      if(reg.waiting && navigator.serviceWorker.controller){ reg.waiting.postMessage({action:'skipWaiting'}); }
       reg.addEventListener('updatefound', function(){
         var nw=reg.installing;
         if(!nw) return;
         nw.addEventListener('statechange', function(){
           if(nw.state==='installed' && navigator.serviceWorker.controller){
-            swUpdating=true;
             nw.postMessage({action:'skipWaiting'});
           }
         });
