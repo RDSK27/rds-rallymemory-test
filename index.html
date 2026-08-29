@@ -135,11 +135,11 @@ if('serviceWorker' in navigator){
   .result-body{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;align-items:center;gap:9px;padding:12px 14px;background:#fff;text-align:center;}
   .res-chart{width:100%;}
   .res-chart svg{width:100%;height:auto;display:block;}
-  .save-row{display:flex;flex-direction:column;align-items:center;gap:8px;width:100%;margin-top:16px;}
-  .save-row .btn-save,.save-row .btn-rank2{flex:none;width:min(280px,100%);}
-  .btn-save{flex:1;height:var(--ah);background:var(--rojo);color:#fff;border:0;border-radius:0;font-family:inherit;font-weight:700;letter-spacing:1px;text-transform:uppercase;font-size:13px;cursor:pointer;}
+  .save-row{display:flex;justify-content:center;padding:8px 16px 8px;}
+  .save-row-inner{display:flex;align-items:stretch;justify-content:center;gap:8px;width:calc(60% + 92px);max-width:100%;}
+  .btn-save{flex:1;max-width:60%;padding:7px;background:var(--rojo);color:#fff;border:none;border-radius:4px;font-family:inherit;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;font-size:0.65rem;cursor:pointer;}
   .btn-save:disabled{background:#9A9A9A;}
-  .btn-rank2{flex:1;height:var(--ah);background:#fff;color:var(--rojo);border:2px solid var(--rojo);border-radius:0;font-family:inherit;font-weight:700;letter-spacing:1px;text-transform:uppercase;font-size:13px;cursor:pointer;}
+  .btn-rank2{flex:none;width:84px;padding:7px;background:#111;color:#fff;border:none;border-radius:4px;font-family:inherit;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;font-size:0.65rem;cursor:pointer;}
   .rank-screen-title { font-size:1.2rem; font-weight:900; letter-spacing:0.1em; text-transform:uppercase; color:#111; text-align:center; background:#fff; padding:9px 14px 7px; border-bottom:3px solid #4E8B33; margin-bottom:10px; }
   .rank-tabs { display:flex; margin-bottom:0; margin-top:0; }
   .rank-tab { flex:1; padding:5px 4px; font-size:0.58rem; letter-spacing:0.06em; text-align:center; cursor:pointer; color:#999; font-weight:700; text-transform:uppercase; background:#fff; border:1px solid #000; border-right:none; }
@@ -149,6 +149,8 @@ if('serviceWorker' in navigator){
   .rank-full-row { display:flex; align-items:center; gap:8px; padding:5px 14px; border-bottom:1px solid #f0f0f0; }
   .rank-full-row.rank-full-me { background:#EDF6E7; box-shadow:inset 3px 0 0 #4E8B33; }
   .rank-full-row.rank-full-me .rank-full-name { color:#4E8B33; font-weight:900; }
+  .rank-full-row.rank-full-me.me-grey { background:#f0f0f0; box-shadow:inset 3px 0 0 #9A9A9A; }
+  .rank-full-row.rank-full-me.me-grey .rank-full-name { color:#555; }
   .rank-full-pos { font-size:0.72rem; font-weight:900; color:#ccc; width:22px; }
   .rank-full-pos.gold { color:#c9a227; }
   .rank-full-pos.silver { color:#8e9eab; }
@@ -373,11 +375,13 @@ if('serviceWorker' in navigator){
         </div>
       </div>
       <div class="res-chart" id="resChart"></div>
-      <div class="save-row" id="saveRow">
-        <button class="btn-save" id="btnGuardar">Guardar resultado</button>
-        <button class="btn-rank2" id="btnRank2">Ranking</button>
-      </div>
     </div>
+  <div class="save-row" id="saveRow">
+    <div class="save-row-inner">
+      <button class="btn-save" id="btnGuardar">Guardar resultado</button>
+      <button class="btn-rank2" id="btnRank2">Ranking</button>
+    </div>
+  </div>
   <div class="results-actions">
     <button class="game-ctrl-btn" onclick="goHome()">&#8592; Inicio</button>
     <button class="game-ctrl-btn" style="border-right:none;border-left:1px solid #333;" onclick="repeatGame()">&#8634; Repetir</button>
@@ -403,7 +407,10 @@ if('serviceWorker' in navigator){
       <div id="rkList" class="rank-full-list"></div>
     </div>
   <div style="display:flex; justify-content:center; padding:8px 16px 8px;">
-    <button id="btn-hide-repeated" style="width:60%; padding:7px; font-size:0.65rem; font-weight:900; letter-spacing:0.1em; text-transform:uppercase; background:#111; color:#fff; border:none; cursor:pointer; border-radius:4px;" onclick="toggleHideRepeated()">Mostrar repetidos</button>
+    <div class="save-row-inner">
+      <button id="btn-hide-repeated" style="flex:1; max-width:60%; padding:7px; font-size:0.65rem; font-weight:900; letter-spacing:0.1em; text-transform:uppercase; background:#111; color:#fff; border:none; cursor:pointer; border-radius:4px;" onclick="toggleHideRepeated()">Mostrar repetidos</button>
+      <button id="btnGuardarRank" style="display:none; flex:none; width:84px; align-items:center; justify-content:center; padding:7px; font-size:0.65rem; font-weight:900; letter-spacing:0.1em; text-transform:uppercase; background:var(--rojo); color:#fff; border:none; cursor:pointer; border-radius:4px;" aria-label="Guardar mi marca" title="Guardar mi marca">Guardar</button>
+    </div>
   </div>
   <div class="results-actions">
     <button class="game-ctrl-btn" onclick="goHome()">&#8592; Inicio</button>
@@ -642,6 +649,7 @@ function saveScore(avg,total){
   var k=lbKey(S.mode,S.stim,S.total), lb=loadLb(k);
   lb.push(rec); sortLb(lb,S.mode); lb=lb.slice(0,50);
   try{ localStorage.setItem(k,JSON.stringify(lb)); }catch(e){}
+  S.lastRec=rec; S.lastRecKey=k;
   if(window.fbSave){ window.fbSave(rec); }
 }
 
@@ -678,8 +686,17 @@ function getHomeName(){
   return sport ? (nm+'-'+sport) : nm;
 }
 
-function renderRankList(list, el, m){
+function renderRankList(list, el, m, latest){
   list=filterRepeated(list);
+  function rankBetter(a,b){
+    if(a==null) return false; if(b==null) return true;
+    var av=(a.avg==null?9999:a.avg), bv=(b.avg==null?9999:b.avg);
+    if(m==='limite'){
+      var ae=(a.ensayos||0), be=(b.ensayos||0);
+      return ae>be || (ae===be && av<bv);
+    }
+    return av<bv;
+  }
   var medals=['gold','silver','bronze'];
   var meName=getHomeName();
   var myIdx=-1, myEntry=null;
@@ -694,8 +711,8 @@ function renderRankList(list, el, m){
     var d=document.createElement('div');d.className='rank-full-empty';
     d.textContent='Sin resultados';el.appendChild(d);return;
   }
-  function buildRow(entry, posLabel, medalIdx, isMe){
-    var row=document.createElement('div');row.className='rank-full-row'+(isMe?' rank-full-me':'');
+  function buildRow(entry, posLabel, medalIdx, isMe, grey){
+    var row=document.createElement('div');row.className='rank-full-row'+(isMe?' rank-full-me':'')+(isMe&&grey?' me-grey':'');
     var pos=document.createElement('div');
     pos.className='rank-full-pos'+(medalIdx>=0 && medalIdx<3?' '+medals[medalIdx]:'');
     pos.textContent=posLabel;
@@ -715,6 +732,17 @@ function renderRankList(list, el, m){
     var posLabel=(myIdx+1>=100)?'100+':String(myIdx+1);
     el.appendChild(buildRow(myEntry, posLabel, -1, true));
   }
+  if(latest){
+    var shownTs={};
+    for(var s2=0;s2<display.length;s2++){ if(display[s2].ts!=null) shownTs[display[s2].ts]=1; }
+    var bestExtra=(myEntry && myIdx>=15 && myEntry.ts===latest.ts);
+    if(!shownTs[latest.ts] && !bestExtra){
+      var lpos=1;
+      for(var q=0;q<list.length;q++){ if(rankBetter(list[q], latest)) lpos++; }
+      var greyLatest=!!(myEntry && myIdx<15 && rankBetter(myEntry, latest));
+      el.appendChild(buildRow(latest, (lpos>=100?'100+':String(lpos)), -1, true, greyLatest));
+    }
+  }
 }
 
 function rankFromSel(){
@@ -732,10 +760,33 @@ function segRank(id){
     b.classList.add('sel'); rankFromSel();
   });
 }
+function updateRankSaveBtn(){
+  var g=document.getElementById('btnGuardarRank'); if(!g) return;
+  if(S.saved===false){
+    g.style.display='flex';
+    g.disabled=false;
+    g.style.background='var(--rojo)';
+    g.style.cursor='pointer';
+    g.setAttribute('aria-label','Guardar mi marca');
+    g.setAttribute('title','Guardar mi marca');
+    g.textContent='Guardar';
+  } else if(S.saved===true){
+    g.style.display='flex';
+    g.disabled=true;
+    g.style.background='#9A9A9A';
+    g.style.cursor='default';
+    g.setAttribute('aria-label','Marca guardada');
+    g.setAttribute('title','Marca guardada');
+    g.textContent='Guardado';
+  } else {
+    g.style.display='none';
+  }
+}
 function showRanking(){
   hideRepeated=true;
   var btn=document.getElementById('btn-hide-repeated');
   if(btn) btn.textContent='Mostrar repetidos';
+  updateRankSaveBtn();
   var mode=selVal('segModo')||'normal';
   var total=(mode==='limite')?0:parseInt(selVal('segEnsayos')||'5',10);
   setSeg('segModoR',mode); if(mode!=='limite') setSeg('segEnsR',total);
@@ -746,14 +797,20 @@ function showRanking(){
 function renderRank(mode,stim,total){
   var key=lbKey(mode,stim,total); S.rankKey=key;
   var el=$('rkList'); if(!el) return;
+  var latest=null;
+  if(S.saved===false && isFinite(S.resAvg) && lbKey(S.mode,S.stim,S.total)===key){
+    latest={ name:(S.sport?(S.name+'-'+S.sport):S.name), avg:Math.round(S.resAvg), ensayos:S.resEnsayos, ts:Date.now() };
+  } else if(S.lastRec && S.lastRecKey===key){
+    latest=S.lastRec;
+  }
   var lbLocal=loadLb(key);
   sortLb(lbLocal, mode);
-  renderRankList(lbLocal, el, mode);
+  renderRankList(lbLocal, el, mode, latest);
   if(window.fbLoad){
     window.fbLoad(mode,stim,total).then(function(rows){
       if(rows && S.rankKey===key){
         sortLb(rows, mode);
-        renderRankList(rows, el, mode);
+        renderRankList(rows, el, mode, latest);
       }
     }).catch(function(){});
   }
@@ -769,6 +826,37 @@ $('btnGuardar').addEventListener('click', function(){
   saveScore(S.resAvg, S.resTotal);
   S.saved=true; this.disabled=true; this.textContent='Guardado';
 });
+$('btnGuardarRank').addEventListener('click', function(){
+  if(S.saved!==false) return;
+  saveScore(S.resAvg, S.resTotal);
+  S.saved=true;
+  this.disabled=true;
+  this.style.background='#9A9A9A';
+  this.style.cursor='default';
+  this.setAttribute('aria-label','Marca guardada');
+  this.setAttribute('title','Marca guardada');
+  this.textContent='Guardado';
+  var gb=$('btnGuardar'); if(gb){ gb.disabled=true; gb.textContent='Guardado'; }
+  rankFromSel();
+});
+
+(function(){
+  var iniEl=$('user-ini-input'), sptEl=$('user-sport-select');
+  try{
+    var si=localStorage.getItem('rds_rallymemory_ini');
+    var sd=localStorage.getItem('rds_rallymemory_dep');
+    if(iniEl && si) iniEl.value=si;
+    if(sptEl && sd) sptEl.value=sd;
+  }catch(e){}
+  function persistUser(){
+    try{
+      if(iniEl) localStorage.setItem('rds_rallymemory_ini', iniEl.value||'');
+      if(sptEl) localStorage.setItem('rds_rallymemory_dep', sptEl.value||'');
+    }catch(e){}
+  }
+  if(iniEl) iniEl.addEventListener('input', persistUser);
+  if(sptEl) sptEl.addEventListener('change', persistUser);
+})();
 
 var navs=document.querySelectorAll('.nav-btn');
 for(var i=0;i<navs.length;i++){
