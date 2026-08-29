@@ -81,7 +81,7 @@ if('serviceWorker' in navigator){
   header img{ width:100%; height:auto; display:block; margin-bottom:0; }
   .banner-fallback{ width:100%; background:#111; display:flex; align-items:center; justify-content:center; gap:12px; padding:16px 10px; font-weight:900; letter-spacing:.10em; font-size:1.15rem; text-transform:uppercase; color:#4E8B33; }
   .banner-fallback span{ color:#fff; font-weight:800; letter-spacing:.16em; font-size:.78rem; }
-  .subtitle{ display:block; width:100%; box-sizing:border-box; font-size:0.58rem; letter-spacing:0.14em; color:#cfcfcf; text-transform:none; padding:8px 0 8px; text-align:center; background:linear-gradient(rgba(0,0,0,0.34),rgba(0,0,0,0.34)),var(--carbon); background-size:cover; background-position:center; }
+  .subtitle{ display:block; width:100%; box-sizing:border-box; font-size:0.58rem; letter-spacing:0.14em; color:#cfcfcf; text-transform:none; padding:8px 0 8px; text-align:center; background:#000000; }
   /* ---------- Cuerpo ---------- */
   main{flex:1;padding:8px 16px 4px;display:flex;flex-direction:column;gap:7px;gap:clamp(4px,1svh,9px);background:#FFFFFF;}
   .title{
@@ -92,9 +92,7 @@ if('serviceWorker' in navigator){
   .logo-wrap{display:flex;justify-content:center;padding:0;}
   .logo-wrap img{width:110px;width:min(30vw,110px,13svh);height:auto;display:block;}
   .segment{
-    display:flex;border-top:4px solid #4E8B33;
-    background:linear-gradient(rgba(0,0,0,0.20),rgba(0,0,0,0.28)),var(--carbon);
-    background-size:cover;background-position:center;
+    display:flex;border-top:4px solid #4E8B33;background:#111;
   }
   .segment button{
     flex:1;border:0;background:transparent;color:#fff;
@@ -249,7 +247,7 @@ if('serviceWorker' in navigator){
       <button class="sel" type="button" style="font-size:1.5rem;letter-spacing:0;">&#8734;</button>
     </div>
 
-    <div style="border:3px solid #4E8B33;border-radius:10px;background-color:#222;background-image:linear-gradient(rgba(0,0,0,0.20),rgba(0,0,0,0.28)),var(--carbon);background-size:cover;background-position:center;background-repeat:no-repeat;padding:22px 12px 26px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;width:92%;min-height:250px;box-sizing:border-box;margin:auto auto 28px;">
+    <div style="border:3px solid #4E8B33;border-radius:10px;background-color:#000000;padding:22px 12px 26px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;width:92%;min-height:250px;box-sizing:border-box;margin:auto auto 28px;">
       <div class="home-btn-row">
         <div id="btn-start-wrap" class="start-wrap">
           <button id="btn-start" class="start-btn" ontouchend="event.stopPropagation();" onclick="enterGame()">START</button>
