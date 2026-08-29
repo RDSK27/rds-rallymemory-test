@@ -10,7 +10,7 @@
    Nota: la limpieza de cache solo borra las cache con prefijo 'rallymemory-' para no
    afectar a otras apps RDS publicadas en el mismo dominio (rdsk27.github.io). */
 
-var CACHE = 'rallymemory-v8';
+var CACHE = 'rallymemory-v9';
 
 var SHELL = [
   './',

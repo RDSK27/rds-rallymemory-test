@@ -92,17 +92,20 @@ if('serviceWorker' in navigator){
   .logo-wrap{display:flex;justify-content:center;padding:0;}
   .logo-wrap img{width:110px;width:min(30vw,110px,13svh);height:auto;display:block;}
   .segment{
-    display:flex;border:2px solid #000000;border-radius:4px;overflow:hidden;background:var(--seg);
+    display:flex;border-top:4px solid #4E8B33;
+    background:linear-gradient(rgba(0,0,0,0.20),rgba(0,0,0,0.28)),var(--carbon);
+    background-size:cover;background-position:center;
   }
   .segment button{
-    flex:1;border:0;background:var(--seg);color:var(--tx-seg);
+    flex:1;border:0;background:transparent;color:#fff;
     font-family:inherit;font-weight:900;letter-spacing:1px;text-transform:uppercase;
     font-size:12px;height:36px;padding:0 4px;cursor:pointer;position:relative;
-    border-right:2px solid #000000;
+    border-right:3px solid #666;
     display:flex;align-items:center;justify-content:center;text-align:center;line-height:1.1;
+    text-shadow:0 1px 2px rgba(0,0,0,0.7);
   }
   .segment button:last-child{border-right:0;}
-  .segment button.sel{background:var(--rojo);color:#fff;}
+  .segment button.sel{background:var(--rojo);color:#fff;text-shadow:none;}
   #segModo button{ font-size:13px; letter-spacing:0.3px; padding-left:2px; padding-right:2px; }
   #segEstimulo,#segEnsayos{margin-top:8px;}
   .seg-dim{ opacity:.4; pointer-events:none; }
