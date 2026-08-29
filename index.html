@@ -179,7 +179,8 @@ if('serviceWorker' in navigator){
   .start-btn:active { box-shadow:inset 0 3px 7px rgba(0,0,0,0.6); }
   .home-btn-row{ display:flex; align-items:center; justify-content:center; gap:16px; width:100%; margin:2px auto 4px; }
   .home-btn-row .start-wrap{ margin:0; }
-  .start-btn.rank-btn{ background:radial-gradient(circle at 35% 30%, #ffffff 0%, #ececec 45%, #c6c6c6 100%); display:flex; align-items:center; justify-content:center; font-size:1.7rem; padding:0; }
+  .start-btn.rank-btn{ background:radial-gradient(circle at 35% 30%, #ffffff 0%, #ececec 45%, #c6c6c6 100%); display:flex; align-items:center; justify-content:center; padding:0; }
+  .start-btn.rank-btn svg{ display:block; }
   #user-name-bar { width:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:0 0 5px; box-sizing:border-box; gap:0; }
   /* Overlay "Ejercicio finalizado" (modal a pantalla completa, 1s antes de resultados) */
   #transition-overlay { display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:#111; z-index:9999; align-items:center; justify-content:center; flex-direction:column; }
@@ -252,7 +253,7 @@ if('serviceWorker' in navigator){
           <button id="btn-start" class="start-btn" ontouchend="event.stopPropagation();" onclick="enterGame()">START</button>
         </div>
         <div class="start-wrap" id="btn-rank-wrap">
-          <button class="start-btn rank-btn" ontouchend="event.stopPropagation();" onclick="showRanking()" aria-label="Ranking">&#127942;</button>
+          <button class="start-btn rank-btn" ontouchend="event.stopPropagation();" onclick="showRanking()" aria-label="Ranking"><svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="#333333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 21h8M12 13.5v7.5M7 4h10v5a5 5 0 0 1-10 0V4z"/><path d="M7 4H4v2a3 3 0 0 0 3 3M17 4h3v2a3 3 0 0 1-3 3"/></svg></button>
         </div>
       </div>
   <div id="user-name-bar">
