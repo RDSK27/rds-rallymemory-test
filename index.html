@@ -91,13 +91,14 @@ if('serviceWorker' in navigator){
   .logo-wrap{display:flex;justify-content:center;padding:0;}
   .logo-wrap img{width:110px;width:min(30vw,110px,13svh);height:auto;display:block;}
   .segment{
-    display:flex;border:2px solid var(--negro);border-radius:0;overflow:hidden;background:var(--seg);
+    display:flex;border:2px solid #000000;border-radius:4px;overflow:hidden;background:var(--seg);
   }
   .segment button{
     flex:1;border:0;background:var(--seg);color:var(--tx-seg);
-    font-family:inherit;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;
-    font-size:15px;padding:10px 4px;padding:clamp(7px,1.4svh,12px) 4px;cursor:pointer;position:relative;
-    border-right:2px solid var(--negro);
+    font-family:inherit;font-weight:900;letter-spacing:1px;text-transform:uppercase;
+    font-size:12px;height:36px;padding:0 4px;cursor:pointer;position:relative;
+    border-right:2px solid #000000;
+    display:flex;align-items:center;justify-content:center;text-align:center;line-height:1.1;
   }
   .segment button:last-child{border-right:0;}
   .segment button.sel{background:var(--rojo);color:#fff;}
