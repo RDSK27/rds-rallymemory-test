@@ -177,11 +177,12 @@ if('serviceWorker' in navigator){
   .start-wrap:active { transform:translateY(3px); box-shadow:0 2px 6px rgba(0,0,0,0.6); }
   .start-btn { width:70px; height:70px; border-radius:50%; background:radial-gradient(circle at 35% 30%, #6FB23E 0%, #4E8B33 45%, #2E5E1E 100%); border:none; color:#fff; font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif; font-weight:900; font-size:0.6rem; letter-spacing:0.18em; text-transform:uppercase; cursor:pointer; position:relative; box-shadow:inset 0 2px 4px rgba(255,255,255,0.28), inset 0 -3px 6px rgba(0,0,0,0.5); transition:transform 0.08s; }
   .start-btn:active { box-shadow:inset 0 3px 7px rgba(0,0,0,0.6); }
-  .home-btn-row{ display:flex; align-items:center; justify-content:center; gap:16px; width:100%; margin:2px auto 4px; }
+  .home-btn-row{ display:flex; align-items:center; justify-content:center; gap:16px; width:100%; margin:15px auto 0; }
+  .app-ver{ margin-top:auto; text-align:center; color:#9a9a9a; font-size:0.72rem; letter-spacing:0.12em; font-family:Arial,sans-serif; padding-top:6px; }
   .home-btn-row .start-wrap{ margin:0; }
   .start-btn.rank-btn{ background:radial-gradient(circle at 35% 30%, #ffffff 0%, #ececec 45%, #c6c6c6 100%); display:flex; align-items:center; justify-content:center; padding:0; }
   .start-btn.rank-btn svg{ display:block; }
-  #user-name-bar { width:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:0 0 5px; box-sizing:border-box; gap:0; }
+  #user-name-bar { width:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:0 0 5px; box-sizing:border-box; gap:0; margin-top:31px; }
   /* Overlay "Ejercicio finalizado" (modal a pantalla completa, 1s antes de resultados) */
   #transition-overlay { display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:#111; z-index:9999; align-items:center; justify-content:center; flex-direction:column; }
   #transition-overlay.active { display:flex; }
@@ -247,7 +248,7 @@ if('serviceWorker' in navigator){
       <button class="sel" type="button" style="font-size:1.5rem;letter-spacing:0;">&#8734;</button>
     </div>
 
-    <div style="border:3px solid #4E8B33;border-radius:10px;background-color:#000000;padding:22px 12px 26px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;width:92%;min-height:250px;box-sizing:border-box;margin:auto auto 28px;">
+    <div style="border:3px solid #4E8B33;border-radius:10px;background-color:#000000;padding:20px 12px 12px;display:flex;flex-direction:column;align-items:center;width:92%;min-height:250px;box-sizing:border-box;margin:auto auto 28px;">
       <div class="home-btn-row">
         <div id="btn-start-wrap" class="start-wrap">
           <button id="btn-start" class="start-btn" ontouchend="event.stopPropagation();" onclick="enterGame()">START</button>
@@ -295,6 +296,7 @@ if('serviceWorker' in navigator){
       </select>
     </div>
   </div>
+    <div class="app-ver">v13</div>
     </div>
 
   </main>
