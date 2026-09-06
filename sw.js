@@ -10,7 +10,7 @@
    Nota: la limpieza de cache solo borra las cache con prefijo 'rallymemory-' para no
    afectar a otras apps RDS publicadas en el mismo dominio (rdsk27.github.io). */
 
-var CACHE = 'rallymemory-v15';
+var CACHE = 'rallymemory-v16';
 
 var SHELL = [
   './',
@@ -56,7 +56,7 @@ self.addEventListener('fetch', function(event){
 
   /* NETWORK-FIRST para todo el mismo origen: lo ultimo cuando hay red, cache si no hay */
   event.respondWith(
-    fetch(req).then(function(res){
+    fetch(req, {cache:'no-store'}).then(function(res){
       if(res && res.status === 200 && (res.type === 'basic' || res.type === 'default')){
         var copy = res.clone();
         caches.open(CACHE).then(function(c){ c.put(req, copy).catch(function(){}); });
