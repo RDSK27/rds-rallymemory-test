@@ -213,6 +213,11 @@ if('serviceWorker' in navigator){
   .rm-mods{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-top:2px;}
   .rm-mod{height:36px;border:2px solid #000;border-radius:8px;cursor:pointer;font-family:inherit;font-weight:800;font-size:11px;letter-spacing:.4px;text-transform:uppercase;color:#222;background:linear-gradient(180deg,#fafafa,#e2e2e2);box-shadow:0 2px 4px rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center;text-align:center;line-height:1.05;padding:0 4px;}
   .rm-mod:active{transform:translateY(1px);}
+  /* Abrir/Acaba: mismo tamano/tacto que un rm-mod pero color propio, para
+     distinguir visualmente que solo se pulsan justo tras una curva (no
+     son una nota suelta como el resto). */
+  .rm-tags{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:8px;}
+  .rm-tag{background:linear-gradient(180deg,#fff4d6,#f3d98a);border-color:#8a6d1a;color:#4a3a08;}
 </style>
 </head>
 <body class="home-active">
@@ -296,7 +301,7 @@ if('serviceWorker' in navigator){
       </select>
     </div>
   </div>
-    <div class="app-ver">v16</div>
+    <div class="app-ver">v17</div>
     </div>
 
   </main>
@@ -342,6 +347,14 @@ if('serviceWorker' in navigator){
           <button type="button" class="rm-arrow right" data-key="D6">D6</button>
         </div>
       </div>
+      <!-- Abrir/Acaba: SOLO se pulsan justo despues de acertar una curva
+           (izquierda/derecha + numero) a la que el motor le ha pegado esa
+           etiqueta -- no son una nota aparte, ver rmPress/S.awaitingTag.
+           2026-09-18, pedido expreso. -->
+      <div class="rm-tags">
+        <button type="button" class="rm-mod rm-tag" data-key="abrir">Abrir</button>
+        <button type="button" class="rm-mod rm-tag" data-key="acaba">Acaba</button>
+      </div>
       <div class="rm-mods">
         <button type="button" class="rm-mod" data-key="m0">Se abre</button>
         <button type="button" class="rm-mod" data-key="m1">Se cierra</button>
@@ -349,6 +362,9 @@ if('serviceWorker' in navigator){
         <button type="button" class="rm-mod" data-key="m3">Por fuera</button>
         <button type="button" class="rm-mod" data-key="m4">Sucia</button>
         <button type="button" class="rm-mod" data-key="m5">No morder</button>
+        <button type="button" class="rm-mod" data-key="m6">Tin</button>
+        <button type="button" class="rm-mod" data-key="m7">Ton</button>
+        <button type="button" class="rm-mod" data-key="m8">Ras</button>
       </div>
     </div>
   <div class="results-actions">
@@ -883,19 +899,36 @@ document.addEventListener('click', function(e){ if(e.target.closest && e.target.
 
 /* ====================== MOTOR RALLY MEMORY (modo Normal) ====================== */
 var RM_DIST=[10,20,40,50,70,100], RM_GRADES=[1,2,3,4,5,6], RM_DIRS=['I','D'];
-var RM_MODS=['se abre','se cierra','por dentro','por fuera','sucia','no morder'];
+var RM_MODS=['se abre','se cierra','por dentro','por fuera','sucia','no morder','tin','ton','ras'];
 var RM_RATE=1.15;
 function rmRand(a){ return a[Math.floor(Math.random()*a.length)]; }
 function rmCurve(){ return {t:'C',dir:rmRand(RM_DIRS),g:rmRand(RM_GRADES)}; }
 function rmDistN(){ return {t:'D',v:rmRand(RM_DIST)}; }
 function rmModN(){ return {t:'M',v:rmRand(RM_MODS)}; }
+/* Nunca se cantan 2 curvas seguidas del MISMO lado (izquierda-numero tras
+   izquierda-numero, o derecha tras derecha) -- 2026-09-18, pedido expreso.
+   En vez de evitarlo puro (volver a sortear hasta que salga otro lado), lo
+   que pasa es que esa 2a curva del mismo lado NO se canta como nota aparte:
+   se le pega una etiqueta Abrir/Acaba a la curva anterior (Abrir si el
+   numero que hubiera tocado es 4/5/6, Acaba si es 1/2/3 -- el numero en si
+   NUNCA se dice ni cuenta como nota, solo decide la etiqueta). Si hay mas
+   de una colision seguida del mismo lado, solo la PRIMERA pone la
+   etiqueta; las siguientes se descartan igual (se reintenta) sin volver a
+   tocar la etiqueta ya puesta. */
 function rmGen(n){
   var seq=[rmCurve()];
   while(seq.length<n){
     var last=seq[seq.length-1],ch;
     if(last.t==='C')ch=['C','M','D']; else if(last.t==='M')ch=['C','D']; else ch=['C'];
     var p=rmRand(ch);
-    if(p==='C'){ var c=rmCurve(),g=0; while(last.t==='C'&&c.dir===last.dir&&c.g===last.g&&g++<30)c=rmCurve(); seq.push(c); }
+    if(p==='C'){
+      var c=rmCurve();
+      if(last.t==='C' && c.dir===last.dir){
+        if(!last.tag) last.tag=(c.g>=4)?'abrir':'acaba';
+        continue; // no crece el array esta vuelta -- se reintenta el siguiente hueco
+      }
+      seq.push(c);
+    }
     else if(p==='M') seq.push(rmModN()); else seq.push(rmDistN());
   }
   return seq;
@@ -906,11 +939,12 @@ function rmFrag(n,prev){
   if(n.t==='M') return n.v;
   var w=rmCW(n.dir)+' '+n.g;
   if(prev&&(prev.t==='C'||prev.t==='M')) w='para '+w;
+  if(n.tag) w+=' '+n.tag;
   return w;
 }
 function rmAudio(seq){ var o=[]; for(var i=0;i<seq.length;i++) o.push(rmFrag(seq[i],i>0?seq[i-1]:null)); return o.join(', '); }
 function rmCap(x){ return x.charAt(0).toUpperCase()+x.slice(1); }
-function rmVis(n){ if(n.t==='D')return String(n.v); if(n.t==='M')return rmCap(n.v); return (n.dir==='I'?'IZQ ':'DER ')+n.g; }
+function rmVis(n){ if(n.t==='D')return String(n.v); if(n.t==='M')return rmCap(n.v); var w=(n.dir==='I'?'IZQ ':'DER ')+n.g; if(n.tag) w+=' '+rmCap(n.tag); return w; }
 function rmKeyOf(n){ if(n.t==='D')return 'd'+n.v; if(n.t==='M')return 'm'+RM_MODS.indexOf(n.v); return (n.dir==='I'?'I':'D')+n.g; }
 
 function sndGo(){ var c=audioCtx(); if(!c) return; tone('sine',880,1320,c.currentTime,0.16,0.25); }
@@ -994,7 +1028,7 @@ function rmStartGame(N){
   rmStartRound();
 }
 function rmStartRound(){
-  S.pressIdx=0; S.armed=false; S.phase='presenting';
+  S.pressIdx=0; S.awaitingTag=null; S.armed=false; S.phase='presenting';
   if(S.mode!=='normal'){
     S.roundSeq=rmGenExtremo(S.roundLen, S.prevTwo);
     S.prevTwo=(S.roundSeq.length>=2)?[rmKeyOf(S.roundSeq[0]),rmKeyOf(S.roundSeq[1])]:null;
@@ -1018,22 +1052,41 @@ function rmStartRound(){
     TTS.speak(rmAudio(S.roundSeq), {rate:RM_RATE}, go);
   }
 }
+/* Una curva con etiqueta (Abrir/Acaba) exige 2 pulsaciones para la MISMA
+   nota (la curva, luego la etiqueta) antes de avanzar de nota -- 2026-09-18,
+   pedido expreso. S.awaitingTag guarda que etiqueta hace falta pulsar tras
+   acertar la curva; se limpia al acertarla, al fallar, o al reiniciar
+   ronda (rmStartRound). */
+function rmAdvanceNote(){
+  S.pressIdx++;
+  if(S.pressIdx>=S.roundLen){
+    var rt=Math.max(0, performance.now()-S.roundT0-RT_CORR);
+    S.times.push(rt); S.trial++; S.armed=false; S.phase='between';
+    if(S.roundLen>=S.targetN){ rmEnd(); }
+    else { S.roundLen++; S.coverTo=setTimeout(function(){ if(!S.done&&S.running) rmStartRound(); }, 550); }
+  }
+}
+function rmFailPress(){
+  S.awaitingTag=null;
+  if(S.mode==='limite'){ rmEndLimite(); }
+  else { sndFail(); rmShowFail(); S.pressIdx=0; }
+}
 function rmPress(key){
   if(!S.armed || S.phase!=='reproduce') return;
-  var exp=rmKeyOf(S.roundSeq[S.pressIdx]);
+  if(S.awaitingTag){
+    if(key===S.awaitingTag){ sndTap(); S.awaitingTag=null; rmAdvanceNote(); }
+    else { rmFailPress(); }
+    return;
+  }
+  var node=S.roundSeq[S.pressIdx];
+  var exp=rmKeyOf(node);
   if(key===exp){
     sndTap();
     if(S.pressIdx===0){ rmShowChips(false); rmClearFail(); }
-    S.pressIdx++;
-    if(S.pressIdx>=S.roundLen){
-      var rt=Math.max(0, performance.now()-S.roundT0-RT_CORR);
-      S.times.push(rt); S.trial++; S.armed=false; S.phase='between';
-      if(S.roundLen>=S.targetN){ rmEnd(); }
-      else { S.roundLen++; S.coverTo=setTimeout(function(){ if(!S.done&&S.running) rmStartRound(); }, 550); }
-    }
+    if(node.t==='C' && node.tag){ S.awaitingTag=node.tag; return; } // falta pulsar Abrir/Acaba antes de avanzar
+    rmAdvanceNote();
   } else {
-    if(S.mode==='limite'){ rmEndLimite(); }
-    else { sndFail(); rmShowFail(); S.pressIdx=0; }
+    rmFailPress();
   }
 }
 function rmEndLimite(){
