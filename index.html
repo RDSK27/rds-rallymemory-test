@@ -301,7 +301,7 @@ if('serviceWorker' in navigator){
       </select>
     </div>
   </div>
-    <div class="app-ver">v17</div>
+    <div class="app-ver">v18</div>
     </div>
 
   </main>
@@ -1106,7 +1106,7 @@ TTS.init();
 </script>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
-import { initializeFirestore, getFirestore, persistentLocalCache, persistentMultipleTabManager, collection, addDoc, getDocs, query, where } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
+import { getFirestore, collection, addDoc, getDocs, query, where } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
 const firebaseConfig = {
   /* Proyecto suite compartido rds-reaction-test; coleccion propia scores_rallymemory */
   apiKey: "AIzaSyBbEgbWddPt_rhPM24bL_Nacp7TAlh1biM",
@@ -1116,11 +1116,18 @@ const firebaseConfig = {
   messagingSenderId: "490684952529",
   appId: "1:490684952529:web:bb53a9813bd58ecdb3baf0"
 };
+/* Sin persistencia offline (2026-09-28): initializeFirestore con
+   persistentLocalCache+persistentMultipleTabManager podia quedarse
+   esperando un candado entre pestanas/sesiones que nunca se libera --
+   dejaba el ranking mostrando solo lo local de ese dispositivo, sin
+   arreglarse ni cerrando y reabriendo la app (el candado vive en
+   IndexedDB, no en memoria). El guardado local (localStorage) sigue
+   funcionando igual sin conexion; lo unico que se pierde es la cola de
+   reintento automatico de Firestore cuando no hay red. */
 let db=null;
 try{
   const app=initializeApp(firebaseConfig);
-  try{ db=initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) }); }
-  catch(e){ db=getFirestore(app); }
+  db=getFirestore(app);
 }catch(e){ db=null; }
 window.fbReady=!!db;
 window.fbSave=async function(rec){
