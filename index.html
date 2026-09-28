@@ -301,7 +301,7 @@ if('serviceWorker' in navigator){
       </select>
     </div>
   </div>
-    <div class="app-ver">v18</div>
+    <div class="app-ver">v19</div>
     </div>
 
   </main>
@@ -1103,6 +1103,32 @@ function rmEnd(){
 }
 TTS.init();
 /* ============================ FIN MOTOR RALLY MEMORY ============================ */
+</script>
+<script>
+/* Identidad pasada desde SuiteRDS (2026-09-28): si se entra desde el boton
+   de Rankings de SuiteRDS, la URL lleva ?ini=XXX&dep=YYY con lo que la
+   persona ya marco alli como "quien soy". Se rellenan los mismos campos
+   de siempre (INI + deporte) y se disparan sus propios eventos input/
+   change -- así cada app usa TAL CUAL su mecanismo ya existente de
+   recordar nombre y de resaltar "tu" fila en el ranking, sin duplicar esa
+   logica aqui. Sin parametros en la URL, no hace nada (uso normal). */
+(function(){
+  try{
+    var params=new URLSearchParams(location.search);
+    var ini=params.get('ini'), dep=params.get('dep');
+    if(!ini && !dep) return;
+    var iniEl=document.getElementById('user-ini-input')||document.getElementById('home-initials');
+    var sptEl=document.getElementById('user-sport-select')||document.getElementById('home-sport');
+    if(ini && iniEl){
+      iniEl.value=ini.toUpperCase().replace(/[^A-Z]/g,'').slice(0,3);
+      iniEl.dispatchEvent(new Event('input',{bubbles:true}));
+    }
+    if(dep && sptEl){
+      sptEl.value=dep;
+      sptEl.dispatchEvent(new Event('change',{bubbles:true}));
+    }
+  }catch(e){}
+})();
 </script>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
