@@ -302,7 +302,7 @@ if('serviceWorker' in navigator){
       </select>
     </div>
   </div>
-    <div class="app-ver">v20</div>
+    <div class="app-ver">v21</div>
     <div id="pending-sync" class="pending-sync"></div>
     </div>
 
@@ -661,6 +661,9 @@ function finishLimite(kind){
 
 function lbKey(mode,stim,total){ return 'rds_rallymemory_'+mode+'_'+stim+'_'+total; }
 function loadLb(k){ try{ return JSON.parse(localStorage.getItem(k)||'[]'); }catch(e){ return []; } }
+function rankCacheKey(mode,stim,total){ return 'rds_rallymemory_rankcache_'+mode+'_'+stim+'_'+total; }
+function loadRankCache(k){ try{ return JSON.parse(localStorage.getItem(k)||'null'); }catch(e){ return null; } }
+function saveRankCache(k,rows){ try{ localStorage.setItem(k, JSON.stringify(rows)); }catch(e){} }
 function sortLb(lb,mode){
   if(mode==='limite'){ lb.sort(function(a,b){ return (b.ensayos-a.ensayos)||(a.avg-b.avg); }); }
   else { lb.sort(function(a,b){ return a.avg-b.avg; }); }
@@ -828,11 +831,15 @@ function renderRank(mode,stim,total){
   var lbLocal=loadLb(key);
   sortLb(lbLocal, mode);
   renderRankList(lbLocal, el, mode, latest);
+  var rcKey=rankCacheKey(mode,stim,total);
+  var cached=loadRankCache(rcKey);
+  if(cached){ sortLb(cached, mode); renderRankList(cached, el, mode, latest); }
   if(window.fbLoad){
     window.fbLoad(mode,stim,total).then(function(rows){
       if(rows && S.rankKey===key){
         sortLb(rows, mode);
         renderRankList(rows, el, mode, latest);
+        saveRankCache(rcKey, rows);
       }
     }).catch(function(){});
   }
