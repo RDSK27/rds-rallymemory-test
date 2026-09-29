@@ -315,7 +315,7 @@ if('serviceWorker' in navigator){
       </select>
     </div>
   </div>
-    <div class="app-ver">v25</div>
+    <div class="app-ver">v26</div>
     <div id="pending-sync" class="pending-sync"></div>
     </div>
 
@@ -1205,8 +1205,24 @@ function gateShow(note){
 function gateHide(){
   var g=document.getElementById('accessGate'); if(g) g.style.display='none';
 }
+function readUrlKey(){
+  try{ var k=new URLSearchParams(location.search).get('k'); return k?k.trim():null; }catch(e){ return null; }
+}
 async function checkGate(){
   var saved=null; try{ saved=localStorage.getItem(GATE_LS); }catch(e){}
+  var urlKey=readUrlKey();
+  if(urlKey){
+    /* Viene de SuiteRDS (2026-09-29), que ya paso su propia pantalla de
+       clave -- se confia al instante (funciona igual online que offline,
+       sin depender de que localStorage se comparta con SuiteRDS) y se
+       guarda para las proximas visitas directas. Se revalida en segundo
+       plano por si esa clave ya no fuera la vigente. */
+    try{ localStorage.setItem(GATE_LS, urlKey); }catch(e){}
+    gateHide();
+    var liveUrl=await fetchGateKey();
+    if(liveUrl!==undefined && liveUrl && liveUrl!==urlKey){ gateShow(''); }
+    return;
+  }
   if(saved){
     /* Desbloqueo optimista (2026-09-29): ya se verifico en este dispositivo
        antes -- no hacer esperar a que responda Firestore (hasta 8s, mucho
