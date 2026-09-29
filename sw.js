@@ -10,7 +10,7 @@
    Nota: la limpieza de cache solo borra las cache con prefijo 'rallymemory-' para no
    afectar a otras apps RDS publicadas en el mismo dominio (rdsk27.github.io). */
 
-var CACHE = 'rallymemory-v24';
+var CACHE = 'rallymemory-v25';
 
 var SHELL = [
   './',
@@ -54,20 +54,26 @@ self.addEventListener('fetch', function(event){
   var url = new URL(req.url);
   if(url.origin !== self.location.origin) return;   /* no tocar Firebase/gstatic/externos */
 
-  /* NETWORK-FIRST para todo el mismo origen: lo ultimo cuando hay red, cache si no hay */
+  /* NETWORK-FIRST para todo el mismo origen: lo ultimo cuando hay red, cache si no hay.
+     OJO (2026-09-29): la NAVEGACION (el HTML) se guarda/busca con la clave
+     fija 'index.html', nunca con el request tal cual -- si se usara el
+     request, la URL con ?ini=&dep= que anade SuiteRDS al entrar desde ahi
+     (o su ausencia en otras visitas) generaria una clave distinta cada
+     vez, y caches.match(req) casi nunca encontraria la copia guardada --
+     rompia el offline justo al entrar desde SuiteRDS. El resto de recursos
+     (imagenes, etc.) si se guardan por su propia URL, eso es correcto. */
+  var isNav = (req.mode === 'navigate');
+  var putKey = isNav ? 'index.html' : req;
   event.respondWith(
     fetch(req, {cache:'no-store'}).then(function(res){
       if(res && res.status === 200 && (res.type === 'basic' || res.type === 'default')){
         var copy = res.clone();
-        caches.open(CACHE).then(function(c){ c.put(req, copy).catch(function(){}); });
+        caches.open(CACHE).then(function(c){ c.put(putKey, copy).catch(function(){}); });
       }
       return res;
     }).catch(function(){
-      return caches.match(req).then(function(m){
-        if(m) return m;
-        if(req.mode === 'navigate'){ return caches.match('index.html').then(function(x){ return x || caches.match('./'); }); }
-        return Response.error();
-      });
+      if(isNav){ return caches.match('index.html').then(function(x){ return x || caches.match('./'); }); }
+      return caches.match(req).then(function(m){ return m || Response.error(); });
     })
   );
 });
