@@ -315,7 +315,7 @@ if('serviceWorker' in navigator){
       </select>
     </div>
   </div>
-    <div class="app-ver">v23</div>
+    <div class="app-ver">v24</div>
     <div id="pending-sync" class="pending-sync"></div>
     </div>
 
@@ -1207,9 +1207,19 @@ function gateHide(){
 }
 async function checkGate(){
   var saved=null; try{ saved=localStorage.getItem(GATE_LS); }catch(e){}
+  if(saved){
+    /* Desbloqueo optimista (2026-09-29): ya se verifico en este dispositivo
+       antes -- no hacer esperar a que responda Firestore (hasta 8s, mucho
+       peor sin red) para dejar pasar. Se revalida en segundo plano SIN
+       bloquear; solo vuelve a pedir la clave si de verdad se confirma
+       (con conexion real) que ha cambiado. */
+    gateHide();
+    var live=await fetchGateKey();
+    if(live!==undefined && live && live!==saved){ gateShow(''); }
+    return;
+  }
   var live=await fetchGateKey();
-  if(live===undefined){ if(saved){ gateHide(); } else { gateShow('Necesitas conexión la primera vez.'); } return; }
-  if(live && saved===live){ gateHide(); return; }
+  if(live===undefined){ gateShow('Necesitas conexión la primera vez.'); return; }
   gateShow('');
 }
 var gateBtn=document.getElementById('accessGateBtn');
