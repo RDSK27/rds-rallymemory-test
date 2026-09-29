@@ -315,7 +315,7 @@ if('serviceWorker' in navigator){
       </select>
     </div>
   </div>
-    <div class="app-ver">v22</div>
+    <div class="app-ver">v23</div>
     <div id="pending-sync" class="pending-sync"></div>
     </div>
 
@@ -1213,21 +1213,28 @@ async function checkGate(){
   gateShow('');
 }
 var gateBtn=document.getElementById('accessGateBtn');
-if(gateBtn){
-  gateBtn.addEventListener('click', async function(){
-    var input=document.getElementById('accessGateInput');
-    var val=(input&&input.value||'').trim();
-    var errEl=document.getElementById('accessGateErr');
-    if(!val) return;
-    if(errEl) errEl.textContent='';
-    var live=await fetchGateKey();
-    if(live===undefined){ if(errEl) errEl.textContent='Sin conexión, inténtalo de nuevo.'; return; }
-    if(live && val===live){
-      try{ localStorage.setItem(GATE_LS, val); }catch(e){}
-      gateHide();
-    } else {
-      if(errEl) errEl.textContent='Clave incorrecta.';
-    }
+var gateInput=document.getElementById('accessGateInput');
+async function attemptGateUnlock(){
+  if(!gateInput) return;
+  var val=(gateInput.value||'').trim();
+  var errEl=document.getElementById('accessGateErr');
+  if(!val) return;
+  if(errEl) errEl.textContent='';
+  if(gateBtn){ gateBtn.disabled=true; gateBtn.textContent='Comprobando…'; }
+  var live=await fetchGateKey();
+  if(gateBtn){ gateBtn.disabled=false; gateBtn.textContent='Entrar'; }
+  if(live===undefined){ if(errEl) errEl.textContent='Sin conexión, inténtalo de nuevo.'; return; }
+  if(live && val===live){
+    try{ localStorage.setItem(GATE_LS, val); }catch(e){}
+    gateHide();
+  } else {
+    if(errEl) errEl.textContent='Clave incorrecta.';
+  }
+}
+if(gateBtn){ gateBtn.addEventListener('click', attemptGateUnlock); }
+if(gateInput){
+  gateInput.addEventListener('keydown', function(e){
+    if(e.key==='Enter'){ e.preventDefault(); attemptGateUnlock(); }
   });
 }
 checkGate();
