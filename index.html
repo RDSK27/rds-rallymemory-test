@@ -219,22 +219,9 @@ if('serviceWorker' in navigator){
      son una nota suelta como el resto). */
   .rm-tags{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:8px;}
   .rm-tag{background:linear-gradient(180deg,#fff4d6,#f3d98a);border-color:#8a6d1a;color:#4a3a08;}
-  #accessGate{position:fixed;inset:0;background:#000;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:20px;box-sizing:border-box;}
-  #accessGate input{width:200px;max-width:80vw;padding:10px;border:2px solid #b03020;border-radius:6px;font-size:1.1rem;text-align:center;font-family:Arial,sans-serif;box-sizing:border-box;}
-  #accessGate button{padding:10px 24px;background:#b03020;color:#fff;border:0;border-radius:6px;font-weight:900;letter-spacing:0.06em;text-transform:uppercase;font-size:0.85rem;cursor:pointer;}
-  #accessGate h2{color:#fff;font-size:1rem;letter-spacing:0.08em;text-transform:uppercase;margin:0;font-family:Arial,sans-serif;}
-  #accessGate .gate-err{color:#e0a030;font-size:0.8rem;min-height:1em;font-family:Arial,sans-serif;}
-  #accessGate .gate-note{color:#888;font-size:0.7rem;text-align:center;max-width:260px;font-family:Arial,sans-serif;}
 </style>
 </head>
 <body class="home-active">
-<div id="accessGate">
-  <h2>Acceso restringido</h2>
-  <input type="text" id="accessGateInput" inputmode="numeric" placeholder="Clave" autocomplete="off">
-  <button type="button" id="accessGateBtn">Entrar</button>
-  <div class="gate-err" id="accessGateErr"></div>
-  <div class="gate-note" id="accessGateNote"></div>
-</div>
 <div class="app">
 
   <header>
@@ -315,7 +302,7 @@ if('serviceWorker' in navigator){
       </select>
     </div>
   </div>
-    <div class="app-ver">v26</div>
+    <div class="app-ver">v27</div>
     <div id="pending-sync" class="pending-sync"></div>
     </div>
 
@@ -1154,7 +1141,7 @@ TTS.init();
 </script>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs, query, where, doc, getDoc } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
+import { getFirestore, collection, addDoc, getDocs, query, where } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
 const firebaseConfig = {
   /* Proyecto suite compartido rds-reaction-test; coleccion propia scores_rallymemory */
   apiKey: "AIzaSyBbEgbWddPt_rhPM24bL_Nacp7TAlh1biM",
@@ -1178,92 +1165,6 @@ try{
   db=getFirestore(app);
 }catch(e){ db=null; }
 window.fbReady=!!db;
-
-/* Clave de acceso a la suite (2026-09-29): compartida entre las 12 apps
-   via localStorage (mismo origen). Se lee de Firestore hub_config/access
-   -- cambiar la clave ahi "echa" a quien ya habia entrado, porque se
-   revalida contra el valor actual cada vez que hay red. Sin red, se
-   confia en la ultima clave verificada (si la hay). */
-var GATE_LS='rds_suite_access_key';
-function gateWithTimeout(p,ms){
-  return new Promise(function(resolve,reject){
-    var done=false, t=setTimeout(function(){ if(!done){ done=true; reject(new Error('timeout')); } }, ms);
-    p.then(function(v){ if(!done){ done=true; clearTimeout(t); resolve(v); } }, function(e){ if(!done){ done=true; clearTimeout(t); reject(e); } });
-  });
-}
-async function fetchGateKey(){
-  if(!db) return undefined;
-  try{
-    var snap=await gateWithTimeout(getDoc(doc(db,'hub_config','access')), 8000);
-    return (snap && snap.exists()) ? (snap.data().key||null) : null;
-  }catch(e){ return undefined; }
-}
-function gateShow(note){
-  var g=document.getElementById('accessGate'); if(g) g.style.display='flex';
-  var n=document.getElementById('accessGateNote'); if(n) n.textContent=note||'';
-}
-function gateHide(){
-  var g=document.getElementById('accessGate'); if(g) g.style.display='none';
-}
-function readUrlKey(){
-  try{ var k=new URLSearchParams(location.search).get('k'); return k?k.trim():null; }catch(e){ return null; }
-}
-async function checkGate(){
-  var saved=null; try{ saved=localStorage.getItem(GATE_LS); }catch(e){}
-  var urlKey=readUrlKey();
-  if(urlKey){
-    /* Viene de SuiteRDS (2026-09-29), que ya paso su propia pantalla de
-       clave -- se confia al instante (funciona igual online que offline,
-       sin depender de que localStorage se comparta con SuiteRDS) y se
-       guarda para las proximas visitas directas. Se revalida en segundo
-       plano por si esa clave ya no fuera la vigente. */
-    try{ localStorage.setItem(GATE_LS, urlKey); }catch(e){}
-    gateHide();
-    var liveUrl=await fetchGateKey();
-    if(liveUrl!==undefined && liveUrl && liveUrl!==urlKey){ gateShow(''); }
-    return;
-  }
-  if(saved){
-    /* Desbloqueo optimista (2026-09-29): ya se verifico en este dispositivo
-       antes -- no hacer esperar a que responda Firestore (hasta 8s, mucho
-       peor sin red) para dejar pasar. Se revalida en segundo plano SIN
-       bloquear; solo vuelve a pedir la clave si de verdad se confirma
-       (con conexion real) que ha cambiado. */
-    gateHide();
-    var live=await fetchGateKey();
-    if(live!==undefined && live && live!==saved){ gateShow(''); }
-    return;
-  }
-  var live=await fetchGateKey();
-  if(live===undefined){ gateShow('Necesitas conexión la primera vez.'); return; }
-  gateShow('');
-}
-var gateBtn=document.getElementById('accessGateBtn');
-var gateInput=document.getElementById('accessGateInput');
-async function attemptGateUnlock(){
-  if(!gateInput) return;
-  var val=(gateInput.value||'').trim();
-  var errEl=document.getElementById('accessGateErr');
-  if(!val) return;
-  if(errEl) errEl.textContent='';
-  if(gateBtn){ gateBtn.disabled=true; gateBtn.textContent='Comprobando…'; }
-  var live=await fetchGateKey();
-  if(gateBtn){ gateBtn.disabled=false; gateBtn.textContent='Entrar'; }
-  if(live===undefined){ if(errEl) errEl.textContent='Sin conexión, inténtalo de nuevo.'; return; }
-  if(live && val===live){
-    try{ localStorage.setItem(GATE_LS, val); }catch(e){}
-    gateHide();
-  } else {
-    if(errEl) errEl.textContent='Clave incorrecta.';
-  }
-}
-if(gateBtn){ gateBtn.addEventListener('click', attemptGateUnlock); }
-if(gateInput){
-  gateInput.addEventListener('keydown', function(e){
-    if(e.key==='Enter'){ e.preventDefault(); attemptGateUnlock(); }
-  });
-}
-checkGate();
 
 /* Cola de reintento offline (2026-09-28, propia, en localStorage):
    ya no hay persistencia de Firestore (ver nota arriba), asi que si

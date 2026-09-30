@@ -1,83 +1,78 @@
-/* RDS Rally Memory Test - Service Worker
-   Estrategia: NETWORK-FIRST para TODO lo del mismo origen (HTML, CSS, JS e imagenes).
-   - Con internet: siempre se descarga la version mas reciente y se refresca la copia
-     en cache. Cualquier cambio que subas (index.html, logo.webp, banner.webp, iconos...)
-     se ve la proxima vez que abras la app, SIN borrar nada ni subir el numero de version.
-   - Sin internet: se sirve la ultima copia cacheada (la app sigue funcionando offline).
-   - Firebase / gstatic / dominios externos: NO se interceptan (los gestiona el index.html
-     con Firestore + localStorage).
-
-   Nota: la limpieza de cache solo borra las cache con prefijo 'rallymemory-' para no
-   afectar a otras apps RDS publicadas en el mismo dominio (rdsk27.github.io). */
-
-var CACHE = 'rallymemory-v26';
-
-var SHELL = [
+/* RDS Rally Memory Test - Service Worker */
+var CACHE = 'rallymemory-v27';
+var ASSETS = [
   './',
-  'index.html',
-  'manifest.json',
-  'apple-touch-icon.png',
-  'icon-192.png',
-  'icon-512.png',
-  'assets/carbon.webp',
-  'assets/mesh.webp',
-  'assets/banner.webp',
-  'assets/logo.webp'
+  './index.html',
+  './manifest.json',
+  './icon-192.png',
+  './icon-512.png',
+  './apple-touch-icon.png',
+  './assets/carbon.webp',
+  './assets/mesh.webp',
+  './assets/banner.webp',
+  './assets/logo.webp'
 ];
 
-self.addEventListener('install', function(event){
-  self.skipWaiting();                          /* activa la version nueva sin esperar */
-  event.waitUntil(
-    caches.open(CACHE).then(function(c){
-      return Promise.all(SHELL.map(function(u){
-        return c.add(u).catch(function(){});   /* precache tolerante (offline base) */
-      }));
+self.addEventListener('install', function(e){
+  e.waitUntil(
+    caches.open(CACHE).then(function(cache){
+      // {cache:'reload'} evita que el precache use copias viejas del HTTP cache
+      return cache.addAll(ASSETS.map(function(u){ return new Request(u, {cache:'reload'}); }));
     })
   );
 });
 
-self.addEventListener('activate', function(event){
-  event.waitUntil(
+self.addEventListener('message', function(e){
+  if(e.data && e.data.action === 'skipWaiting'){ self.skipWaiting(); }
+});
+
+self.addEventListener('activate', function(e){
+  e.waitUntil(
     caches.keys().then(function(keys){
-      return Promise.all(keys.map(function(k){
-        /* borra cache vieja de ESTA app (deja intactas las de otras apps RDS) */
-        if(k.indexOf('rallymemory-') === 0 && k !== CACHE){ return caches.delete(k); }
-        return null;
-      }));
+      /* borra cache vieja de ESTA app (deja intactas las de otras apps RDS,
+         que comparten origen -- caches.keys() ve TODAS las del origen). */
+      return Promise.all(keys.map(function(k){ if(k.indexOf('rallymemory-')===0 && k!==CACHE){ return caches.delete(k); } }));
     }).then(function(){ return self.clients.claim(); })
   );
 });
 
-self.addEventListener('fetch', function(event){
-  var req = event.request;
-  if(req.method !== 'GET') return;
+self.addEventListener('fetch', function(e){
+  var req = e.request;
+  if(req.method !== 'GET'){ return; }
   var url = new URL(req.url);
-  if(url.origin !== self.location.origin) return;   /* no tocar Firebase/gstatic/externos */
+  var sameOrigin = (url.origin === self.location.origin);
 
-  /* NETWORK-FIRST para todo el mismo origen: lo ultimo cuando hay red, cache si no hay.
-     OJO (2026-09-29): la NAVEGACION (el HTML) se guarda/busca con la clave
-     fija 'index.html', nunca con el request tal cual -- si se usara el
-     request, la URL con ?ini=&dep= que anade SuiteRDS al entrar desde ahi
-     (o su ausencia en otras visitas) generaria una clave distinta cada
-     vez, y caches.match(req) casi nunca encontraria la copia guardada --
-     rompia el offline justo al entrar desde SuiteRDS. El resto de recursos
-     (imagenes, etc.) si se guardan por su propia URL, eso es correcto. */
-  var isNav = (req.mode === 'navigate');
-  var putKey = isNav ? 'index.html' : req;
-  event.respondWith(
-    fetch(req, {cache:'no-store'}).then(function(res){
-      if(res && res.status === 200 && (res.type === 'basic' || res.type === 'default')){
-        var copy = res.clone();
-        caches.open(CACHE).then(function(c){ c.put(putKey, copy).catch(function(){}); });
-      }
-      return res;
-    }).catch(function(){
-      if(isNav){ return caches.match('index.html').then(function(x){ return x || caches.match('./'); }); }
-      return caches.match(req).then(function(m){ return m || Response.error(); });
+  // NAVEGACION (HTML): network-first -> siempre la ultima version si hay red,
+  // con la cache como respaldo offline.
+  if(req.mode === 'navigate'){
+    e.respondWith(
+      fetch(req, {cache:'no-store'}).then(function(resp){
+        var copy = resp.clone();
+        caches.open(CACHE).then(function(cache){ try{ cache.put('./index.html', copy); }catch(err){} });
+        return resp;
+      }).catch(function(){
+        return caches.match(req).then(function(cached){ return cached || caches.match('./index.html'); });
+      })
+    );
+    return;
+  }
+
+  var isFbSdk = (url.hostname === 'www.gstatic.com' && url.pathname.indexOf('/firebasejs/') !== -1);
+  // El resto de origenes (p. ej. firestore.googleapis.com) van directos a la red:
+  // asi Firestore gestiona su propia persistencia offline.
+  if(!sameOrigin && !isFbSdk){ return; }
+
+  // ASSETS estaticos: cache-first.
+  e.respondWith(
+    caches.match(req).then(function(cached){
+      if(cached){ return cached; }
+      return fetch(req).then(function(resp){
+        var copy = resp.clone();
+        caches.open(CACHE).then(function(cache){ try{ cache.put(req, copy); }catch(err){} });
+        return resp;
+      }).catch(function(){
+        if(req.mode === 'navigate'){ return caches.match('./index.html'); }
+      });
     })
   );
-});
-
-self.addEventListener('message', function(event){
-  if(event.data && event.data.action === 'skipWaiting'){ self.skipWaiting(); }
 });
