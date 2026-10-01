@@ -302,7 +302,7 @@ if('serviceWorker' in navigator){
       </select>
     </div>
   </div>
-    <div class="app-ver">v30</div>
+    <div class="app-ver">v31</div>
     <div id="pending-sync" class="pending-sync"></div>
     </div>
 
@@ -1161,6 +1161,10 @@ TTS.init();
    recordar nombre y de resaltar "tu" fila en el ranking, sin duplicar esa
    logica aqui. Sin parametros en la URL, no hace nada (uso normal). */
 (function(){
+  /* 2026-10-01: se aplica al TERMINAR de cargar la pagina (evento load), no al parsear este script:
+     varias apps restauran despues su INI/deporte guardados en este aparato y pisaban lo que manda
+     SuiteRDS (Ball Coordination y Tenis dejaban siempre el deporte en OTR). */
+  function applyUrlIdentity(){
   try{
     var params=new URLSearchParams(location.search);
     var ini=params.get('ini'), dep=params.get('dep');
@@ -1176,6 +1180,8 @@ TTS.init();
       sptEl.dispatchEvent(new Event('change',{bubbles:true}));
     }
   }catch(e){}
+  }
+  if(document.readyState==='complete') applyUrlIdentity(); else window.addEventListener('load', applyUrlIdentity);
 })();
 </script>
 <script type="module">

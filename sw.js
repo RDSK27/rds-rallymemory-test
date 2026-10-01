@@ -1,5 +1,5 @@
 /* RDS Rally Memory Test - Service Worker */
-var CACHE = 'rallymemory-v30';
+var CACHE = 'rallymemory-v31';
 var ASSETS = [
   './',
   './index.html',
