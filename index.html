@@ -302,7 +302,7 @@ if('serviceWorker' in navigator){
       </select>
     </div>
   </div>
-    <div class="app-ver">v29</div>
+    <div class="app-ver">v30</div>
     <div id="pending-sync" class="pending-sync"></div>
     </div>
 
@@ -1241,6 +1241,66 @@ async function flushPending(){
   updatePendingUI();
   flushing=false;
 }
+/* Red de seguridad (2026-10-01): garantiza que NINGUNA marca guardada en este dispositivo
+   se quede sin llegar al ranking global. Cada marca se guarda siempre en local; si por lo
+   que sea (fallo de envio con la app cerrada, SDK sin cargar offline, version antigua sin
+   cola...) no llego a subir ni esta en la cola, esta pasada la encuentra y la encola.
+   Al abrir la app con red (y al recuperarla), como mucho cada 6 h: se comprueban las marcas
+   locales aun no verificadas contra Firestore (1 consulta por nombre, solo lectura) y las
+   que faltan se anaden a la cola de pendientes (que ya sabe subirlas). Si cualquier
+   comprobacion falla NO se sube nada (evita duplicados). Las verificadas se recuerdan para
+   no repetir lecturas. */
+var RECON_PFX='rds_rallymemory_', RECON_COL='scores_rallymemory';
+function reconKey(r){ return (r.name||'')+'|'+(r.ts||r.date||''); }
+function reconOk(r){ return r && r.name && typeof r.ts==='number' && r.mode!==undefined && r.stim!==undefined && r.total!==undefined; }
+function reconCollect(){
+  var out=[];
+  try{
+    for(var i=0;i<localStorage.length;i++){
+      var k=localStorage.key(i);
+      if(!k || k.indexOf(RECON_PFX)!==0 || /rankcache|pending|recon|legacy|_ts$/.test(k)) continue;
+      var arr; try{ arr=JSON.parse(localStorage.getItem(k)); }catch(e){ continue; }
+      if(!Array.isArray(arr)) continue;
+      arr.forEach(function(r){ if(reconOk(r)) out.push(r); });
+    }
+  }catch(e){}
+  return out;
+}
+async function reconcileOrphans(force, dry){
+  try{
+    if(!db || !navigator.onLine) return null;
+    var now=Date.now(), TS=RECON_PFX+'recon_ts', OK=RECON_PFX+'recon_ok';
+    if(!force && now-(+localStorage.getItem(TS)||0) < 6*3600*1000) return null;
+    var ok={}; try{ ok=JSON.parse(localStorage.getItem(OK)||'{}')||{}; }catch(e){ ok={}; }
+    var pend={}; loadPending().forEach(function(q){ pend[reconKey(q)]=1; });
+    var seen={}, cands=[];
+    reconCollect().forEach(function(r){
+      var k=reconKey(r); if(seen[k] || ok[k] || pend[k]) return; seen[k]=1;
+      if(now-(r.ts||r.date||0) < 120000) return;   // recien guardada: puede estar subiendose ahora mismo
+      cands.push(r);
+    });
+    if(!cands.length){ if(!dry) localStorage.setItem(TS,String(now)); return {cands:0, add:[]}; }
+    var names={}; cands.forEach(function(r){ names[r.name]=1; });
+    var have={};
+    for(var nm in names){
+      var snap=await withTimeout(getDocs(query(collection(db,RECON_COL), where('name','==',nm))), 12000);   // si falla, lanza: no se sube nada
+      snap.forEach(function(d){ have[reconKey(d.data())]=1; });
+    }
+    var add=[];
+    cands.forEach(function(r){ var k=reconKey(r); if(have[k]) ok[k]=1; else add.push(r); });
+    if(dry) return {cands:cands.length, add:add};
+    add.forEach(function(r){ ok[reconKey(r)]=1; });   // quedan en la cola: no volver a consultarlas
+    var ks=Object.keys(ok); if(ks.length>3000){ var n2={}; ks.slice(ks.length-3000).forEach(function(k){ n2[k]=1; }); ok=n2; }
+    if(add.length){ savePending(loadPending().concat(add)); updatePendingUI(); }
+    localStorage.setItem(OK,JSON.stringify(ok)); localStorage.setItem(TS,String(now));
+    if(add.length) flushPending();
+    return {cands:cands.length, add:add};
+  }catch(e){ return null; }
+}
+window.fbReconcile=function(dry){ return reconcileOrphans(true, !!dry); };
+setTimeout(reconcileOrphans, 8000);
+window.addEventListener('online', function(){ setTimeout(reconcileOrphans, 4000); });
+document.addEventListener('visibilitychange', function(){ if(document.visibilityState==='visible'){ setTimeout(reconcileOrphans, 4000); } });
 window.fbSave=async function(rec){
   if(!db) return false;
   if(!navigator.onLine){ var p1=loadPending(); p1.push(rec); savePending(p1); updatePendingUI(); return false; }
