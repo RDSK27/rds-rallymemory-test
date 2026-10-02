@@ -318,7 +318,7 @@ if('serviceWorker' in navigator){
       </select>
     </div>
   </div>
-    <div class="app-ver">v32</div>
+    <div class="app-ver">v33</div>
     <div id="pending-sync" class="pending-sync"></div>
     </div>
 
@@ -1333,25 +1333,57 @@ window.addEventListener('online', flushPending);
 document.addEventListener('visibilitychange', function(){ if(document.visibilityState==='visible'){ flushPending(); } });
 updatePendingUI();
 flushPending();
+/* ===== Ranking INCREMENTAL (2-oct-2026): ahorra lecturas de Firestore =====
+   Cada dispositivo guarda la coleccion que ya conoce (localStorage) y solo pide lo nuevo: lectura completa la
+   primera vez (y cada 7 dias, por si se borro algo a mano); despues solo ts >= ultimo-6h, con escucha en directo
+   solo sobre esos documentos nuevos. Las marcas de otros siguen apareciendo al instante; el guardado no cambia. */
+function mkInc(COL,TSF,KEY,STRIP){
+  var WEEK=7*864e5, MARGIN=6*36e5, c={docs:{},full:0,ts:0}, loaded=false;
+  function load(){ if(loaded) return; loaded=true; try{ var o=JSON.parse(localStorage.getItem(KEY)||'null'); if(o&&o.docs&&typeof o.docs==='object') c=o; }catch(e){} }
+  function save(){ try{ localStorage.setItem(KEY,JSON.stringify(c)); }catch(e){} }
+  function strip(r){ if(STRIP&&r&&r[STRIP]!==undefined) delete r[STRIP]; return r; }
+  function put(id,r){ c.docs[id]=r; var t=r&&r[TSF]; if(typeof t==='number'&&t>c.ts&&t<=Date.now()+36e5) c.ts=t; }
+  function rows(f){ var out=[],id,r; for(id in c.docs){ r=c.docs[id]; if(!f||f(r)) out.push(r); } return out; }
+  function need(){ return !c.full||Date.now()-c.full>WEEK||!Object.keys(c.docs).length; }
+  function tailQ(){ return query(collection(db,COL), where(TSF,'>=',Math.max(0,c.ts-MARGIN))); }
+  function fullLoad(){ return getDocs(collection(db,COL)).then(function(snap){ c.docs={}; c.ts=0; snap.forEach(function(d){ put(d.id,strip(d.data())); }); c.full=Date.now(); save(); }); }
+  return {
+    watch:function(f,cb,errCb){
+      if(!db) return null; load();
+      var unsub=null, dead=false;
+      if(Object.keys(c.docs).length){ try{ cb(rows(f)); }catch(e){} }
+      function listen(){
+        if(dead) return;
+        try{
+          unsub=onSnapshot(tailQ(), { includeMetadataChanges:true }, function(snap){
+            if(snap.metadata.fromCache) return;   // sin servidor no hay datos reales: no pisar la copia guardada
+            snap.docChanges().forEach(function(ch){ if(ch.type==='removed') delete c.docs[ch.doc.id]; else put(ch.doc.id,strip(ch.doc.data())); });
+            save(); cb(rows(f));
+          }, function(){ if(errCb){ try{ errCb(); }catch(e){} } });
+        }catch(e){}
+      }
+      if(need()){ fullLoad().then(function(){ if(dead) return; cb(rows(f)); listen(); }).catch(function(){ if(errCb){ try{ errCb(); }catch(e){} } }); }
+      else listen();
+      return function(){ dead=true; if(unsub){ try{ unsub(); }catch(e){} unsub=null; } };
+    },
+    load:async function(f){
+      if(!db) return null; load();
+      try{
+        if(need()) await fullLoad();
+        else { var snap=await getDocs(tailQ()); snap.forEach(function(d){ put(d.id,strip(d.data())); }); save(); }
+        return rows(f);
+      }catch(e){ return null; }
+    }
+  };
+}
+var RINC=mkInc('scores_rallymemory','ts','rds_rallymemory_inc');
 window.fbWatch=function(mode,stim,total,cb){
   if(!db) return null;
-  try{
-    const q=query(collection(db,'scores_rallymemory'), where('mode','==',mode), where('stim','==',stim), where('total','==',total));
-    return onSnapshot(q, function(snap){
-      if(snap.metadata.fromCache) return;   // sin servidor no hay datos reales: no pisar la copia guardada
-      const out=[]; snap.forEach(function(d){ out.push(d.data()); });
-      cb(out);
-    }, function(){});
-  }catch(e){ return null; }
+  try{ return RINC.watch(function(r){ return r.mode===mode&&r.stim===stim&&r.total===total; }, cb); }catch(e){ return null; }
 };
 window.fbLoad=async function(mode,stim,total){
   if(!db) return null;
-  try{
-    const q=query(collection(db,'scores_rallymemory'), where('mode','==',mode), where('stim','==',stim), where('total','==',total));
-    const snap=await getDocs(q);
-    const out=[]; snap.forEach(function(d){ out.push(d.data()); });
-    return out;
-  }catch(e){ return null; }
+  return RINC.load(function(r){ return r.mode===mode&&r.stim===stim&&r.total===total; });
 };
 </script>
 <div id="transition-overlay">
