@@ -212,6 +212,22 @@ if('serviceWorker' in navigator){
   .rm-arrow.right{clip-path:polygon(0 0,76% 0,100% 50%,76% 100%,0 100%);padding-right:14px;}
   .rm-arrow.left{clip-path:polygon(24% 0,100% 0,100% 100%,24% 100%,0 50%);padding-left:14px;}
   .rm-mods{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-top:2px;}
+
+  /* v32: la pantalla de juego cabe en la altura disponible (p. ej. abierta desde SuiteRDS, con barra inferior):
+     las teclas se reparten el alto que sobra y el resto se compacta. En pantallas altas queda como antes. */
+  @media (max-height:760px){
+    .rm-body{padding:6px 12px 6px;gap:5px;}
+    .rm-top .rm-v,.rm-top .rm-chrono{font-size:16px;}
+    .rm-body .rm-panel{height:clamp(66px,13svh,128px);}
+    .rm-chip-big{font-size:16px;padding:4px 12px;}
+    .rm-failflash{font-size:26px;}
+    .rm-body .rm-keys{flex:1 1 0;min-height:0;gap:6px;}
+    .rm-col{min-height:0;gap:4px;}
+    .rm-colh{font-size:8px;margin-bottom:0;line-height:1;}
+    .rm-body .rm-key,.rm-body .rm-arrow{flex:1 1 0;height:auto;min-height:18px;max-height:38px;font-size:14px;}
+    .rm-mods{gap:5px;margin-top:0;}
+    .rm-body .rm-mod{height:clamp(24px,4.6svh,36px);font-size:10px;}
+  }
   .rm-mod{height:36px;border:2px solid #000;border-radius:8px;cursor:pointer;font-family:inherit;font-weight:800;font-size:11px;letter-spacing:.4px;text-transform:uppercase;color:#222;background:linear-gradient(180deg,#fafafa,#e2e2e2);box-shadow:0 2px 4px rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center;text-align:center;line-height:1.05;padding:0 4px;}
   .rm-mod:active{transform:translateY(1px);}
   /* Abrir/Acaba: mismo tamano/tacto que un rm-mod pero color propio, para
@@ -302,7 +318,7 @@ if('serviceWorker' in navigator){
       </select>
     </div>
   </div>
-    <div class="app-ver">v31</div>
+    <div class="app-ver">v32</div>
     <div id="pending-sync" class="pending-sync"></div>
     </div>
 
