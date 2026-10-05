@@ -318,7 +318,7 @@ if('serviceWorker' in navigator){
       </select>
     </div>
   </div>
-    <div class="app-ver">v33</div>
+    <div class="app-ver">v34</div>
     <div id="pending-sync" class="pending-sync"></div>
     </div>
 
@@ -1376,7 +1376,7 @@ function mkInc(COL,TSF,KEY,STRIP){
     }
   };
 }
-var RINC=mkInc('scores_rallymemory','ts','rds_rallymemory_inc');
+var RINC=mkInc('scores_rallymemory','ts','rds_rallymemory_inc'); window.rdsPrepare=async function(){var rows=await RINC.load(null);if(rows===null)return false;try{var g={};rows.forEach(function(r){var k=[r.mode,r.stim,r.total];var s=JSON.stringify(k);(g[s]=g[s]||{k:k,rows:[]}).rows.push(r);});Object.keys(g).forEach(function(s){var o=g[s];saveRankCache(rankCacheKey(o.k[0],o.k[1],o.k[2]),o.rows);});}catch(e){return false;}return true;};
 window.fbWatch=function(mode,stim,total,cb){
   if(!db) return null;
   try{ return RINC.watch(function(r){ return r.mode===mode&&r.stim===stim&&r.total===total; }, cb); }catch(e){ return null; }
