@@ -137,6 +137,9 @@ if('serviceWorker' in navigator){
   .result-body{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;align-items:center;gap:9px;padding:12px 14px;background:#fff;text-align:center;}
   .res-chart{width:100%;}
   .res-chart svg{width:100%;height:auto;display:block;}
+  .pos-wrap{display:none;flex-direction:column;align-items:center;gap:4px;padding:6px 16px 0;text-align:center;}
+  .pos-circle{width:54px;height:54px;border-radius:50%;background:#000;color:#fff;font-weight:900;font-size:24px;line-height:1;display:flex;align-items:center;justify-content:center;font-family:inherit;}
+  .pos-txt{font-size:10px;font-weight:700;letter-spacing:0.04em;color:#555;}
   .save-row{display:flex;justify-content:center;padding:8px 16px 8px;}
   .save-row-inner{display:flex;align-items:stretch;justify-content:center;gap:8px;width:calc(60% + 92px);max-width:100%;}
   .btn-save{flex:1;max-width:60%;padding:7px;background:var(--rojo);color:#fff;border:none;border-radius:4px;font-family:inherit;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;font-size:0.65rem;cursor:pointer;}
@@ -318,7 +321,7 @@ if('serviceWorker' in navigator){
       </select>
     </div>
   </div>
-    <div class="app-ver">v34</div>
+    <div class="app-ver">v35</div>
     <div id="pending-sync" class="pending-sync"></div>
     </div>
 
@@ -414,6 +417,7 @@ if('serviceWorker' in navigator){
       </div>
       <div class="res-chart" id="resChart"></div>
     </div>
+  <div class="pos-wrap" id="posWrap"><div class="pos-circle" id="posNum">-</div><div class="pos-txt">posici&#243;n de este resultado en el ranking</div></div>
   <div class="save-row" id="saveRow">
     <div class="save-row-inner">
       <button class="btn-save" id="btnGuardar">Guardar resultado</button>
@@ -629,7 +633,30 @@ function renderChart(times){
   box.innerHTML=s+'</svg>';
 }
 
-function showSaveScreen(msg){
+/* Posicion de este resultado (2026-10-05): se calcula con la copia local del ranking (cache de esta combinacion + marcas
+   pendientes de este dispositivo), sin ninguna lectura de Firestore. Cuenta solo la mejor marca de cada OTRA persona, igual que
+   el ranking (que oculta repetidos). Sin copia guardada de la combinacion no se muestra nada. */
+function updatePos(){
+  var w=document.getElementById('posWrap'); if(!w) return;
+  w.style.display='none';
+  try{
+    if(S.libre||!isFinite(S.resAvg)) return;
+    
+    var g=loadRankCache(rankCacheKey(S.mode,S.stim,S.total)); if(!g) return;
+    var nm=(S.sport?(S.name+'-'+S.sport):S.name), rec={ name:nm, avg:Math.round(S.resAvg), ensayos:S.resEnsayos, ts:Date.now() };
+    
+    var rows=mergeRank(g,pendingOnly(loadLb(lbKey(S.mode,S.stim,S.total))));
+    sortLb(rows,S.mode);
+    var seen={}, out=[];
+    rows.forEach(function(r){ var n=r.name||''; if(n===rec.name||seen[n]) return; seen[n]=1; out.push(r); });
+    out.push(rec);
+    sortLb(out,S.mode);
+    var p=out.indexOf(rec)+1, e=document.getElementById('posNum');
+    e.textContent=p; e.style.fontSize=p>=100?'16px':(p>=10?'22px':'26px');
+    w.style.display='flex';
+  }catch(e){}
+}
+function showSaveScreen(msg){ updatePos();
   var sr=document.getElementById('saveRow'); if(sr) sr.style.display=(S.libre?'none':'');
   var lc=document.getElementById('libreCount');
   if(lc){ if(S.libre){ lc.innerHTML='<div class="lc-k">'+(S.byTime?'Ensayos conseguidos':'Ensayos')+'</div><div class="lc-v">'+S.resEnsayos+'</div>'; lc.style.display=''; } else { lc.style.display='none'; } }
