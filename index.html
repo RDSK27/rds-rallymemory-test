@@ -321,7 +321,7 @@ if('serviceWorker' in navigator){
       </select>
     </div>
   </div>
-    <div class="app-ver">v35</div>
+    <div class="app-ver">v36</div>
     <div id="pending-sync" class="pending-sync"></div>
     </div>
 
@@ -1364,16 +1364,36 @@ flushPending();
    Cada dispositivo guarda la coleccion que ya conoce (localStorage) y solo pide lo nuevo: lectura completa la
    primera vez (y cada 7 dias, por si se borro algo a mano); despues solo ts >= ultimo-6h, con escucha en directo
    solo sobre esos documentos nuevos. Las marcas de otros siguen apareciendo al instante; el guardado no cambia. */
+/* v+ (2026-10-12): SEMILLA ESTATICA. Un proceso de GitHub (repo rds-rankings-data) publica en GitHub Pages el JSON completo de cada ranking (cada ~15 min). En vez de
+   la lectura completa de Firestore (miles de lecturas por dispositivo) se descarga ese JSON (gratis) y, a partir de su ultima marca, solo se piden a Firestore las
+   nuevas (margen 1 h) + escucha en directo. Si el JSON falla y hay copia local no se gastan lecturas completas (reintento en 30 min); sin copia, lectura completa de siempre. */
+var STATIC_BASE=(location.hostname==='localhost'||location.hostname==='127.0.0.1') ? '/rds-rankings-data/data/' : 'https://rdsk27.github.io/rds-rankings-data/data/';
+var STATIC_COLS=['scores_ballcoordination','scores_circuit','scores_gimnasia','scores_lights','scores_memorycards','scores_perception','scores_processing','scores_processing2','scores_rallymemory','scores_reactionkarate','scores_reactiontenis','scores_reactiontrial','scores_squares','scores_reaction_10_normal_press_nosound','scores_reaction_10_normal_press_sound'];
 function mkInc(COL,TSF,KEY,STRIP){
-  var WEEK=7*864e5, MARGIN=6*36e5, c={docs:{},full:0,ts:0}, loaded=false;
+  var HAS_JSON=STATIC_COLS.indexOf(COL)>=0, WEEK=7*864e5, AGE=HAS_JSON?12*36e5:WEEK, MARGIN=(HAS_JSON?1:6)*36e5, c={docs:{},full:0,ts:0}, loaded=false;
   function load(){ if(loaded) return; loaded=true; try{ var o=JSON.parse(localStorage.getItem(KEY)||'null'); if(o&&o.docs&&typeof o.docs==='object') c=o; }catch(e){} }
   function save(){ try{ localStorage.setItem(KEY,JSON.stringify(c)); }catch(e){} }
   function strip(r){ if(STRIP&&r&&r[STRIP]!==undefined) delete r[STRIP]; return r; }
   function put(id,r){ c.docs[id]=r; var t=r&&r[TSF]; if(typeof t==='number'&&t>c.ts&&t<=Date.now()+36e5) c.ts=t; }
   function rows(f){ var out=[],id,r; for(id in c.docs){ r=c.docs[id]; if(!f||f(r)) out.push(r); } return out; }
-  function need(){ return !c.full||Date.now()-c.full>WEEK||!Object.keys(c.docs).length; }
+  function need(){ return !c.full||Date.now()-c.full>AGE||!Object.keys(c.docs).length; }
   function tailQ(){ return query(collection(db,COL), where(TSF,'>=',Math.max(0,c.ts-MARGIN))); }
-  function fullLoad(){ return getDocs(collection(db,COL)).then(function(snap){ c.docs={}; c.ts=0; snap.forEach(function(d){ put(d.id,strip(d.data())); }); c.full=Date.now(); save(); }); }
+  function seed(){
+    return fetch(STATIC_BASE+COL+'.json', {cache:'no-cache'}).then(function(r){ if(!r.ok) throw new Error('json'); return r.json(); }).then(function(j){
+      if(!j || j.v!==1 || !Array.isArray(j.docs) || !j.docs.length) throw new Error('json');
+      c.docs={}; c.ts=0;
+      j.docs.forEach(function(d){ var id=d.id; delete d.id; put(id,strip(d)); });
+      c.full=Date.now(); save();
+    });
+  }
+  function fullLoad(){
+    if(!HAS_JSON) return dbFull();
+    return seed().catch(function(){
+      if(Object.keys(c.docs).length){ c.full=Date.now()-AGE+30*6e4; save(); return; }   // hay copia local: sin lectura completa; reintento en 30 min
+      return dbFull();
+    });
+  }
+  function dbFull(){ return getDocs(collection(db,COL)).then(function(snap){ c.docs={}; c.ts=0; snap.forEach(function(d){ put(d.id,strip(d.data())); }); c.full=Date.now(); save(); }); }
   return {
     watch:function(f,cb,errCb){
       if(!db) return null; load();
