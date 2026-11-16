@@ -286,7 +286,7 @@ if('serviceWorker' in navigator){
           <button class="start-btn rank-btn" ontouchend="event.stopPropagation();" onclick="showRanking()" aria-label="Ranking"><svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="#333333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 21h8M12 13.5v7.5M7 4h10v5a5 5 0 0 1-10 0V4z"/><path d="M7 4H4v2a3 3 0 0 0 3 3M17 4h3v2a3 3 0 0 1-3 3"/></svg></button>
         </div>
       </div>
-  <div class="app-ver" style="margin-top:6px;padding-top:0;">v40</div>
+  <div class="app-ver" style="margin-top:6px;padding-top:0;">v41</div>
   <div id="user-name-bar" style="margin-top:8px;">
     <div style="display:flex;width:200px;gap:0;margin:0 auto;">
       <input id="user-ini-input" type="text" maxlength="3" placeholder="INI"
@@ -567,6 +567,7 @@ function clearTimers(){ if(S.countIv){clearInterval(S.countIv);S.countIv=0;} if(
 function enterGame(){ try{ var m0=selVal('segModo')||'normal'; warmRank(m0,'normal',(m0==='limite')?0:parseInt(selVal('segEnsayos')||'5',10)); }catch(e){}
   S.mode=selVal('segModo')||'normal';
   var N=(S.mode==='limite')?0:parseInt(selVal('segEnsayos')||'5',10);
+  if(!rdsIniOk()) return;
   var nm=($('user-ini-input').value||'RDS').toUpperCase().replace(/[^A-Z]/g,'').slice(0,3);
   S.name=nm||'RDS';
   S.sport=($('user-sport-select')&&$('user-sport-select').value)||'';
@@ -1242,7 +1243,22 @@ TTS.init();
     }
   }catch(e){}
   }
-  if(document.readyState==='complete') applyUrlIdentity(); else window.addEventListener('load', applyUrlIdentity);
+  /* 2026-11-16: la identidad que llega de SuiteRDS (?ini=&dep=) se aplica UNA vez y se quita de la direccion: antes, cada recarga
+     (p. ej. al actualizarse la app sola) volvia a poner ese nombre encima de lo que hubiera escrito el deportista. */
+  function rdsUrlOnce(){
+    applyUrlIdentity();
+    try{ var u=new URL(location.href); if(u.searchParams.has('ini')||u.searchParams.has('dep')){ u.searchParams.delete('ini'); u.searchParams.delete('dep'); var q=u.searchParams.toString(); history.replaceState(history.state,'',u.pathname+(q?'?'+q:'')+u.hash); } }catch(e){}
+  }
+  if(document.readyState==='complete') rdsUrlOnce(); else window.addEventListener('load', rdsUrlOnce);
+  /* 2026-11-16: iniciales obligatorias. Sin ellas se guardaba "RDS" (y con el deporte por defecto, RDS-OTR). */
+  window.rdsIniOk=function(){
+    var el=document.getElementById('user-ini-input')||document.getElementById('home-initials'); if(!el) return true;
+    if((el.value||'').replace(/[^A-Za-z]/g,'')) return true;
+    el.style.outline='3px solid #e23b2e'; el.style.outlineOffset='1px'; el.placeholder='\u00a1INI!';
+    if(!el._rdsIni){ el._rdsIni=1; el.addEventListener('input', function(){ if(el.value){ el.style.outline=''; el.placeholder='INI'; } }); }
+    try{ el.scrollIntoView({block:'center'}); }catch(e){} try{ el.focus(); }catch(e){}
+    return false;
+  };
 })();
 </script>
 <script type="module">
