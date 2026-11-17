@@ -286,7 +286,7 @@ if('serviceWorker' in navigator){
           <button class="start-btn rank-btn" ontouchend="event.stopPropagation();" onclick="showRanking()" aria-label="Ranking"><svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="#333333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 21h8M12 13.5v7.5M7 4h10v5a5 5 0 0 1-10 0V4z"/><path d="M7 4H4v2a3 3 0 0 0 3 3M17 4h3v2a3 3 0 0 1-3 3"/></svg></button>
         </div>
       </div>
-  <div class="app-ver" style="margin-top:6px;padding-top:0;">v42</div>
+  <div class="app-ver" style="margin-top:6px;padding-top:0;">v43</div>
   <div id="user-name-bar" style="margin-top:8px;">
     <div style="display:flex;width:200px;gap:0;margin:0 auto;">
       <input id="user-ini-input" type="text" maxlength="3" placeholder="INI"
@@ -1249,7 +1249,26 @@ TTS.init();
     applyUrlIdentity();
     try{ var u=new URL(location.href); if(u.searchParams.has('ini')||u.searchParams.has('dep')){ u.searchParams.delete('ini'); u.searchParams.delete('dep'); var q=u.searchParams.toString(); history.replaceState(history.state,'',u.pathname+(q?'?'+q:'')+u.hash); } }catch(e){}
   }
-  if(document.readyState==='complete') rdsUrlOnce(); else window.addEventListener('load', rdsUrlOnce);
+  /* 2026-11-17: SuiteRDS y las apps comparten almacenamiento (misma direccion). Cuando en SuiteRDS se cambia "quien soy"
+     (suiterds_me + suiterds_me_ts), cada app lo recoge UNA vez: al cargarse (aunque se abra desde su icono), al volver a ella
+     y en directo si esta abierta. Lo que se cambie despues dentro de la app se respeta hasta el siguiente cambio en SuiteRDS.
+     (En iPhone, SuiteRDS instalado en la pantalla de inicio no comparte almacenamiento: ahi solo vale abrir desde SuiteRDS.) */
+  function rdsMeSync(){
+    try{
+      var me=localStorage.getItem('suiterds_me')||'', ts=+localStorage.getItem('suiterds_me_ts')||0, key='rds_me_seen'+location.pathname, seen=+localStorage.getItem(key)||0;
+      if(!me || !ts || ts<=seen) return;
+      localStorage.setItem(key, String(ts));
+      var p=me.split('-'), ini=(p[0]||'').toUpperCase().replace(/[^A-Z]/g,'').slice(0,3), dep=p.slice(1).join('-');
+      var iniEl=document.getElementById('user-ini-input')||document.getElementById('home-initials');
+      var sptEl=document.getElementById('user-sport-select')||document.getElementById('home-sport');
+      if(ini && iniEl && iniEl.value!==ini){ iniEl.value=ini; iniEl.dispatchEvent(new Event('input',{bubbles:true})); }
+      if(dep && sptEl && sptEl.value!==dep && [].some.call(sptEl.options,function(o){ return o.value===dep; })){ sptEl.value=dep; sptEl.dispatchEvent(new Event('change',{bubbles:true})); }
+    }catch(e){}
+  }
+  function rdsIdentityStart(){ rdsUrlOnce(); rdsMeSync(); }
+  if(document.readyState==='complete') rdsIdentityStart(); else window.addEventListener('load', rdsIdentityStart);
+  document.addEventListener('visibilitychange', function(){ if(document.visibilityState==='visible') rdsMeSync(); });
+  window.addEventListener('storage', function(e){ if(e.key==='suiterds_me_ts' || e.key==='suiterds_me') rdsMeSync(); });
   /* 2026-11-16: iniciales obligatorias. Sin ellas se guardaba "RDS" (y con el deporte por defecto, RDS-OTR). */
   window.rdsIniOk=function(){   /* 2026-11-17: tambien exige deporte (un selector en blanco guardaba solo las iniciales, p. ej. "RDS") */
     var el=document.getElementById('user-ini-input')||document.getElementById('home-initials');
