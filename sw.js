@@ -1,5 +1,5 @@
 /* RDS Rally Memory Test - Service Worker */
-var CACHE = 'rallymemory-v38';
+var CACHE = 'rallymemory-v39';
 var ASSETS = [
   './',
   './index.html',
@@ -44,16 +44,26 @@ self.addEventListener('fetch', function(e){ if(e.request.url.indexOf('/rds-ranki
 
   // NAVEGACION (HTML): network-first -> siempre la ultima version si hay red,
   // con la cache como respaldo offline.
+  /* 2026-11-17: con cobertura mala la peticion a la red podia tardar 30-60 s en dar error y, mientras, la pantalla
+     se quedaba en blanco. Ahora se espera a la red como mucho NAV_WAIT ms; si no ha llegado, se muestra la copia
+     guardada y la descarga sigue en segundo plano para dejar guardada la version nueva para la proxima vez. */
   if(req.mode === 'navigate'){
-    e.respondWith(
-      fetch(req, {cache:'no-store'}).then(function(resp){
-        var copy = resp.clone();
-        caches.open(CACHE).then(function(cache){ try{ cache.put('./index.html', copy); }catch(err){} });
-        return resp;
-      }).catch(function(){
-        return caches.match(req).then(function(cached){ return cached || caches.match('./index.html'); });
-      })
-    );
+    var NAV_WAIT = 3000;
+    var net = fetch(req, {cache:'no-store'}).then(function(resp){
+      if(resp && resp.ok){ var copy = resp.clone(); caches.open(CACHE).then(function(cache){ try{ cache.put('./index.html', copy); }catch(err){} }); }
+      return resp;
+    });
+    function saved(){ return caches.match(req).then(function(c){ return c || caches.match('./index.html'); }); }
+    e.respondWith(new Promise(function(resolve){
+      var done = false;
+      function give(r){ if(!done && r){ done = true; resolve(r); } }
+      var t = setTimeout(function(){ saved().then(give); }, NAV_WAIT);
+      net.then(function(r){ clearTimeout(t); give(r); }, function(){
+        clearTimeout(t);
+        saved().then(function(c){ if(c) give(c); else if(!done){ done = true; resolve(Response.error()); } });
+      });
+    }));
+    e.waitUntil(net.catch(function(){}));
     return;
   }
 
