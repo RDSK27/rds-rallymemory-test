@@ -286,7 +286,7 @@ if('serviceWorker' in navigator){
           <button class="start-btn rank-btn" ontouchend="event.stopPropagation();" onclick="showRanking()" aria-label="Ranking"><svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="#333333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 21h8M12 13.5v7.5M7 4h10v5a5 5 0 0 1-10 0V4z"/><path d="M7 4H4v2a3 3 0 0 0 3 3M17 4h3v2a3 3 0 0 1-3 3"/></svg></button>
         </div>
       </div>
-  <div class="app-ver" style="margin-top:6px;padding-top:0;">v41</div>
+  <div class="app-ver" style="margin-top:6px;padding-top:0;">v42</div>
   <div id="user-name-bar" style="margin-top:8px;">
     <div style="display:flex;width:200px;gap:0;margin:0 auto;">
       <input id="user-ini-input" type="text" maxlength="3" placeholder="INI"
@@ -1251,12 +1251,16 @@ TTS.init();
   }
   if(document.readyState==='complete') rdsUrlOnce(); else window.addEventListener('load', rdsUrlOnce);
   /* 2026-11-16: iniciales obligatorias. Sin ellas se guardaba "RDS" (y con el deporte por defecto, RDS-OTR). */
-  window.rdsIniOk=function(){
-    var el=document.getElementById('user-ini-input')||document.getElementById('home-initials'); if(!el) return true;
-    if((el.value||'').replace(/[^A-Za-z]/g,'')) return true;
-    el.style.outline='3px solid #e23b2e'; el.style.outlineOffset='1px'; el.placeholder='\u00a1INI!';
-    if(!el._rdsIni){ el._rdsIni=1; el.addEventListener('input', function(){ if(el.value){ el.style.outline=''; el.placeholder='INI'; } }); }
-    try{ el.scrollIntoView({block:'center'}); }catch(e){} try{ el.focus(); }catch(e){}
+  window.rdsIniOk=function(){   /* 2026-11-17: tambien exige deporte (un selector en blanco guardaba solo las iniciales, p. ej. "RDS") */
+    var el=document.getElementById('user-ini-input')||document.getElementById('home-initials');
+    var sp=document.getElementById('user-sport-select')||document.getElementById('home-sport');
+    var okI=!el || !!(el.value||'').replace(/[^A-Za-z]/g,''), okS=!sp || !!sp.value;
+    function mark(x,on){ if(!x) return; x.style.outline=on?'3px solid #e23b2e':''; x.style.outlineOffset=on?'1px':''; }
+    mark(el,!okI); mark(sp,!okS);
+    if(el && !okI){ el.placeholder='\u00a1INI!'; if(!el._rdsIni){ el._rdsIni=1; el.addEventListener('input', function(){ if(el.value){ mark(el,false); el.placeholder='INI'; } }); } }
+    if(sp && !okS && !sp._rdsDep){ sp._rdsDep=1; sp.addEventListener('change', function(){ if(sp.value) mark(sp,false); }); }
+    if(okI && okS) return true;
+    var f=!okI?el:sp; try{ f.scrollIntoView({block:'center'}); }catch(e){} try{ f.focus(); }catch(e){}
     return false;
   };
 })();
